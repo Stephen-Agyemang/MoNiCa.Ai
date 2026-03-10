@@ -1,0 +1,62 @@
+.markdown-content {
+    font-family: inherit;
+}
+
+.markdown-content p {
+    margin-top: 0;
+    margin-bottom: 1em;
+}
+
+.markdown-content p:last-child {
+    margin-bottom: 0;
+}
+
+.markdown-content code {
+    background: rgba(0, 0, 0, 0.05);
+    padding: 0.2em 0.4em;
+    border-radius: 4px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 0.9em;
+    color: #c026d3;
+}
+
+.markdown-content pre {
+    background: #f8fafc;
+    padding: 12px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-light);
+    overflow-x: auto;
+    margin: 1em 0;
+}
+
+.markdown-content pre code {
+    background: transparent;
+    padding: 0;
+    border-radius: 0;
+    color: #334155;
+}
+
+.markdown-content ul,
+.markdown-content ol {
+    margin-top: 0;
+    margin-bottom: 1em;
+    padding-left: 1.5em;
+}
+
+.markdown-content h1,
+.markdown-content h2,
+.markdown-content h3 {
+    margin-top: 1.2em;
+    margin-bottom: 0.5em;
+    font-weight: 600;
+    color: #0f172a;
+}
+
+.markdown-content h3 {
+    font-size: 1.1em;
+}
+
+.markdown-content strong {
+    font-weight: 600;
+    color: #0f172a;
+}

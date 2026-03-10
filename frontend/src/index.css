@@ -1,0 +1,183 @@
+/* Design tokens and base styles */
+
+:root {
+  /* Webnode-inspired palette */
+  --bg-primary: #F5F5F0;
+  --bg-card: #FFFFFF;
+  --bg-dark-section: #1a2e35;
+
+  --accent: #C5E898;
+  --accent-hover: #b5d87a;
+  --accent-subtle: rgba(197, 232, 152, 0.15);
+
+  --text-heading: #1a2e35;
+  --text-body: #4a5568;
+  --text-muted: #64748b;
+  /* Darkened from #94a3b8 for WCAG contrast compliance */
+
+  --border-light: rgba(255, 255, 255, 0.5);
+  --border-medium: rgba(0, 0, 0, 0.12);
+
+  --radius-sm: 12px;
+  --radius-md: 20px;
+  --radius-lg: 28px;
+  --radius-xl: 40px;
+  --radius-pill: 999px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+@keyframes gradientMeshShift {
+  0% {
+    background-position: 0% 0%;
+  }
+
+  50% {
+    background-position: 100% 100%;
+  }
+
+  100% {
+    background-position: 0% 0%;
+  }
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #f8fafc;
+  background-image:
+    radial-gradient(at 80% 0%, rgba(197, 232, 152, 0.25) 0px, transparent 50%),
+    radial-gradient(at 0% 50%, rgba(186, 230, 253, 0.25) 0px, transparent 50%),
+    radial-gradient(at 80% 50%, rgba(244, 204, 204, 0.25) 0px, transparent 50%),
+    radial-gradient(at 0% 100%, rgba(221, 214, 254, 0.25) 0px, transparent 50%),
+    radial-gradient(at 80% 100%, rgba(197, 232, 152, 0.25) 0px, transparent 50%),
+    radial-gradient(at 0% 0%, rgba(254, 215, 170, 0.2) 0px, transparent 50%);
+  background-attachment: fixed;
+  background-size: 200% 200%;
+  animation: gradientMeshShift 25s ease infinite alternate;
+  color: var(--text-body);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Utility classes */
+.glass-card {
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  box-shadow:
+    0 4px 6px rgba(0, 0, 0, 0.02),
+    0 10px 30px rgba(0, 0, 0, 0.06);
+}
+
+.pill-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px 48px;
+  border-radius: var(--radius-pill);
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: 0.01em;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.pill-button-primary {
+  background: var(--accent);
+  color: var(--text-heading);
+  box-shadow: 0 2px 8px rgba(197, 232, 152, 0.3);
+}
+
+.pill-button-primary:hover {
+  background: var(--accent-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(197, 232, 152, 0.4);
+}
+
+.pill-button-primary:active {
+  transform: translateY(0);
+}
+
+.pill-button-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Smooth fade-in animation */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.6s ease-out forwards;
+}
+
+.animate-delay-1 {
+  animation-delay: 0.1s;
+  opacity: 0;
+}
+
+.animate-delay-2 {
+  animation-delay: 0.2s;
+  opacity: 0;
+}
+
+.animate-delay-3 {
+  animation-delay: 0.3s;
+  opacity: 0;
+}
+
+.animate-delay-4 {
+  animation-delay: 0.4s;
+  opacity: 0;
+}
+
+/* Subtle pulse for live indicator */
+@keyframes softPulse {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-soft-pulse {
+  animation: softPulse 2s ease-in-out infinite;
+}
+
+/* Responsive Workspace Layout */
+.workspace-layout {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  gap: 12px;
+  min-height: 0;
+}
+
+@media (max-width: 900px) {
+  .workspace-layout {
+    flex-direction: column;
+    overflow-y: auto;
+  }
+}

@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monica | AI Interview Coach</title>
+    <script src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.umd.min.js"></script>
+    <style>
+        body {
+            background: #0f172a;
+            color: white;
+            font-family: 'Inter', system-ui, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        .container {
+            text-align: center;
+            background: rgba(30, 41, 59, 0.7);
+            padding: 3rem;
+            border-radius: 24px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            max-width: 500px;
+            width: 90%;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(45deg, #38bdf8, #818cf8);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        p {
+            color: #94a3b8;
+            margin-bottom: 2rem;
+        }
+
+        .video-container {
+            width: 100%;
+            height: 300px;
+            background: #020617;
+            border-radius: 16px;
+            margin-bottom: 1.5rem;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        button {
+            background: #38bdf8;
+            color: #0f172a;
+            border: none;
+            padding: 1rem 2rem;
+            font-size: 1.1rem;
+            font-weight: 700;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            width: 100%;
+        }
+
+        button:hover {
+            background: #7dd3fc;
+            transform: translateY(-2px);
+        }
+
+        .status {
+            margin-top: 1rem;
+            font-size: 0.9rem;
+            color: #38bdf8;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Meet Monica</h1>
+        <p>Your AI Career Bridge. Ready for your mock interview?</p>
+
+        <div class="video-container" id="video-box">
+            <span id="placeholder">Waiting for Monica...</span>
+        </div>
+
+        <button id="start-btn">Start Mock Interview</button>
+        <div class="status" id="status-text">Disconnected</div>
+    </div>
+
+    <script>
+        // This is a simplified starter for your friends!
+        // You would swap these with your production LiveKit URL later.
+        const LIVEKIT_URL = "wss://your-production-url.livekit.cloud";
+
+        document.getElementById('start-btn').onclick = async () => {
+            document.getElementById('status-text').innerText = "Connecting to Monica...";
+            alert("To share this with friends, you'll host this page on Netlify or Vercel and connect it to your LiveKit token server!");
+        };
+    </script>
+</body>
+
+</html>

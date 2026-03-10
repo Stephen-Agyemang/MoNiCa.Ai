@@ -1,0 +1,10 @@
+livekit-agents~=1.4.3
+livekit-plugins-openai~=1.4.1
+livekit-plugins-silero~=1.4.1
+livekit-plugins-elevenlabs~=1.4.3
+livekit-plugins-simli~=1.4.3
+python-dotenv~=1.0.1
+pillow~=11.0.0
+numpy~=2.1.0
+fastapi~=0.115.0
+uvicorn~=0.32.0
