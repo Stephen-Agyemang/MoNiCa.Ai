@@ -38,6 +38,7 @@ function MainStage({ role, company, mode }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitFeedback, setSubmitFeedback] = useState('');
   const [liveGrade, setLiveGrade] = useState(null);
+  const [isTyping, setIsTyping] = useState(false);
   const textareaRef = useRef(null);
 
   // Subscribe to all tracks (Camera for self-view, Video + Audio + Unknown for Agent)
@@ -99,6 +100,12 @@ function MainStage({ role, company, mode }) {
         }
         else if (data.type === 'live_grade') {
           setLiveGrade(data.score);
+        }
+        else if (data.type === 'typing') {
+          if (data.status === 'start') {
+            setIsTyping(true);
+            setTimeout(() => setIsTyping(false), 3500);
+          }
         }
       } catch {
         // Not JSON, ignore
@@ -200,6 +207,13 @@ function MainStage({ role, company, mode }) {
                   letterSpacing: '0.1em', textTransform: 'uppercase',
                   textShadow: '0 1px 3px rgba(0,0,0,0.3)',
                 }}>Live • Monica</span>
+                {isTyping && (
+                  <span className="animate-pulse" style={{
+                    fontSize: '9px', fontWeight: 700, color: '#C5E898',
+                    letterSpacing: '0.1em', textTransform: 'uppercase',
+                    textShadow: '0 1px 3px rgba(0,0,0,0.3)',
+                  }}> • Taking notes... 📝</span>
+                )}
               </div>
             </div>
 
@@ -598,6 +612,13 @@ function MainStage({ role, company, mode }) {
             }}>
               Live • Monica
             </span>
+            {isTyping && (
+              <span className="animate-pulse" style={{
+                fontSize: '11px', fontWeight: 700, color: '#C5E898',
+                letterSpacing: '0.1em', textTransform: 'uppercase',
+                textShadow: '0 1px 3px rgba(0,0,0,0.3)',
+              }}> • Taking notes... 📝</span>
+            )}
           </div>
         </div>
 

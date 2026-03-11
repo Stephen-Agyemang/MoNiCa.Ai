@@ -344,6 +344,13 @@ async def entrypoint(ctx: JobContext):
             nonlocal last_speech_time
             last_speech_time = time.time()
             try:
+                # Dispatch typing indicator while LLM processes the user's speech
+                try:
+                    payload = json.dumps({"type": "typing", "status": "start"})
+                    asyncio.create_task(ctx.room.local_participant.publish_data(payload.encode("utf-8"), reliable=True))
+                except Exception as e:
+                    pass
+                
                 text = msg.content if hasattr(msg, 'content') else str(msg)
                 if text:
                     database.append_to_transcript(ctx.room.name, "Candidate", text)
