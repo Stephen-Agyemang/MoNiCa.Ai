@@ -1,83 +1,93 @@
-# 🎤 Monica: Premium AI Mock Interviewer
+# Monica: AI-Powered Mock Interview Platform
 
-A fully functional, enterprise-grade AI mock interview simulator built with React, FastAPI, LiveKit, and Tavus. This application allows users to conduct highly realistic voice-to-voice interviews with a 3D AI agent ("Monica") that can see, hear, and react to candidates in real-time.
+Monica is an AI-driven system designed to conduct realistic mock interviews across multiple domains, including engineering, product, and design. The platform combines real-time voice interaction, photorealistic visual synthesis, and automated performance assessment to help candidates prepare for high-stakes interviews.
 
-![AI Interviewer Interface](./.readme-assets/interface.png)
+## Core Features
 
-## ✨ Core Features & The "$100k Demo" Experience
+- **Real-Time Voice Interaction:** Conduct seamless, low-latency voice conversations with an AI agent.
+- **Multimodal Interview Paths:** Support for technical, behavioral, system design, and resume-based interview sessions.
+- **Visual Feedback & Body Language:** Embedded 3D AI avatar that reacts to candidate speech and identifies non-verbal cues.
+- **Automated Performance Reports:** Generation of high-fidelity feedback reports with scoring across technical accuracy, problem-solving, and communication.
+- **Sovereign Consent Dashboard:** A "Consent-First" recruiter gateway allowing candidates to explicitly share specific successful sessions.
+- **Guest Practice Mode:** Account-free "Quick Practice" sessions to lower the barrier for professional preparation.
+- **Emotion CV Telemetry:** Real-time analysis of facial expressions using local computer vision to gauge candidate stress and confidence levels.
+- **Secure PDF Export:** Client-side generation of professional interview summaries and transcripts.
 
-*   **Ultra-Low Latency Voice & Video:** Connects directly via WebRTC using the `LiveKit Agents` Python SDK. The `livekit-plugins-tavus` integration generates a stunning, lip-synced 3D avatar of Monica directly into the video feed.
-*   **Zero-Cost Emotion Detection:** Utilizes `face-api.js` via local WebGL in the candidate's browser to analyze facial expressions (stress, confidence, happiness) at 1 FPS. It securely streams tiny JSON telemetry payloads to the backend without ever transmitting biometric image data.
-*   **Live Grading Engine & Transcripts:** The backend silently logs all candidate speech, AI speech, code submissions, and emotion telemetry into a continuous SQLite database (`interview_sessions.db`). A background LLM worker continually assesses the transcript to dispatch a live 1-100 grade to the frontend.
-*   **AI Feedback PDF Reports:** At the end of the session, candidates can download a highly detailed PDF report (generated 100% client-side via `html2pdf.js`) detailing their strengths, weaknesses, code snippets, and final score.
-*   **Recruiter Portal:** A dedicated `/recruiter` route allows a human to silently spectate active LiveKit rooms without publishing their own audio/video.
-*   **Dynamic Role Play (4 Modes):** The AI adapts its strictness, personality, and questions based on:
-    *   **Behavioral:** STAR methodology and culture fit.
-    *   **Technical:** Live algorithms with a built-in code editor.
-    *   **System Design:** Architecture and scalability.
-    *   **Resume Deep Dive:** Uses client-side `pdf.js` to extract text from a resume and inject it into the AI's prompt for deep, personalized drilling.
+## System Architecture Overview
 
-## 🛠 Tech Stack
+User → React Frontend → LiveKit Room → FastAPI Agent → AI APIs → Database
 
-*   **Frontend:** React (Vite), `@livekit/components-react`, `face-api.js` (Emotion CV), `html2pdf.js`, `pdfjs-dist` (Resume Parsing).
-*   **Backend:** FastAPI (Python), `livekit-agents`, `sqlite3`.
-*   **AI Models:** OpenAI (`gpt-4o` for conversation, `gpt-4o-mini` for live grading), ElevenLabs (TTS), Tavus (3D Avatar Generation).
-*   **Infrastructure:** LiveKit Cloud (WebRTC routing and Data Channels).
+- **User Interaction:** The candidate interacts with a React-based frontend that manages WebRTC streams and local computer vision.
+- **Orchestration Layer:** A FastAPI server handles session management, token generation, and communication with the LiveKit agent.
+- **AI Agent Worker:** The LiveKit agent processes incoming audio, manages LLM reasoning, and coordinates TTS/VIS playback.
+- **Persistence Layer:** Interview transcripts and grades are stored in Supabase (PostgreSQL) with a local SQLite fallback for reliability.
 
-## 🚀 Getting Started
+## Tech Stack
+
+- **Frontend:** React 18, Vite, @livekit/components-react, face-api.js.
+- **Backend:** FastAPI, Python 3.10+, livekit-agents.
+- **AI Integration:** OpenAI (LLM), ElevenLabs (TTS), Tavus (AI Avatar).
+- **Security & Support:** Clerk (Authentication), Formspree (Support Relay).
+- **Database:** PostgreSQL (Supabase), SQLite (Development fallback).
+- **Export Engine:** html2pdf.js.
+
+## Running the Project Locally
 
 ### 1. Backend Setup
-
-The backend handles token generation, RAG prompt construction, SQLite logging, and hosts the LiveKit AI Agent.
+The backend requires Python 3.10+ and a valid LiveKit environment.
 
 ```bash
 # Install dependencies
-pip install fastapi uvicorn livekit-agents livekit-plugins-openai livekit-plugins-elevenlabs livekit-plugins-silero livekit-plugins-tavus python-dotenv requests
+pip install fastapi uvicorn livekit-agents python-dotenv psycopg2-binary livekit-plugins-openai livekit-plugins-elevenlabs livekit-plugins-tavus
 
-# Start the Token API Server and Database Connection (Port 8000)
-python server.py &
+# Start the token and API server
+python server.py
 
-# Start the LiveKit Voice Agent (Wait for connections)
+# Launch the AI interview agent worker
 python agent.py dev
 ```
 
 ### 2. Frontend Setup
-
-The frontend provides the applicant tracking dashboard and interview workspace.
-
 ```bash
 cd frontend
-
-# Install dependencies
 npm install
-
-# Start the development server
 npm run dev
 ```
 
-### 3. Environment Variables (`.env`)
+## Environment Variables
 
-You need the following keys in the root directory to run the application securely:
+The system requires a `.env` file in the root directory with the following keys:
 
-```env
-# WebRTC Routing
+```ssh
+# LiveKit Cloud
 LIVEKIT_URL=wss://your-project.livekit.cloud
-LIVEKIT_API_KEY=your_key
-LIVEKIT_API_SECRET=your_secret
+LIVEKIT_API_KEY=your_api_key
+LIVEKIT_API_SECRET=your_api_secret
 
-# AI Brain & Voice
-OPENAI_API_KEY=sk-your-key
-ELEVEN_API_KEY=your_elevenlabs_key
+# AI Providers
+OPENAI_API_KEY=sk-...
+ELEVEN_API_KEY=...
+TAVUS_API_KEY=...
 
-# 3D Avatar (Tavus)
-TAVUS_API_KEY=your_tavus_key
-TAVUS_REPLICA_ID=r79e1...
-TAVUS_PERSONA_ID=pe_8f2...
+# Persistence & Support
+SUPABASE_URL=postgresql://...
+FORMSPREE_URL=https://formspree.io/f/...
+CLERK_PUBLISHABLE_KEY=...
 ```
 
-## 🧠 System Architecture & Security
+## Design Principles & Architecture Decisions
 
-1.  **Strictly Client-Side Biometrics:** All computer vision (`face-api.js`) and document parsing (`pdfjs-dist`) execute entirely in the candidate's browser. The Python backend is absolved of biometric liability and heavy CPU overhead.
-2.  **Stateless File Generation:** The PDF Feedback Report is assembled inside the React app. The backend simply exposes a single, authenticated REST endpoint (`/report/{room_name}`) serving lightweight JSON.
-3.  **Data Channels:** The React frontend and Python backend communicate via robust LiveKit Data Channels to sync code submissions, send UI state updates, and record telemetry.
-4.  **Silence Watchdogs:** The agent implements asynchronous timeout loops to proactively check on candidates if they remain silent for 30 seconds, ensuring a natural conversational cadence.
+1. **Client-Side Data sovereignty:** All biometric analysis (`face-api.js`) and PDF generation (`html2pdf.js`) occur in the user's browser. No raw video feed or identity documents are stored on the server, ensuring candidate privacy.
+2. **Hybrid Persistence Model:** The system utilizes PostgreSQL for scalable cloud storage while maintaining a full SQLite fallback to prevent downtime during network or database provider interruptions.
+3. **Bar-Raiser Logic:** The grading engine uses weighted metrics tailored to the specific role (e.g., higher technical weighting for engineering roles).
+4. **Latency Minimization:** The architecture uses `eleven_turbo_v2_5` and WebRTC Data Channels to ensure that the AI's response time feels natural and human-like.
+
+## Future Roadmap
+
+We are committed to evolving Monica into a world-class career acceleration engine. Our long-term vision includes private session recording, real-time engagement analytics, and multi-persona interview simulations.
+
+**For full details, see our [Interactive Product Roadmap](ROADMAP.md).**
+
+## Author
+
+Developed by the Monica Engineering Team.

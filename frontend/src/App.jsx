@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { SignedIn, SignedOut, SignIn, SignUp, UserButton, useUser } from '@clerk/clerk-react';
 import {
   LiveKitRoom,
   RoomAudioRenderer,
@@ -13,19 +14,87 @@ import '@livekit/components-styles';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
-import * as pdfjsLib from 'pdfjs-dist';
-// Configure worker for PDF.js
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
-import html2pdf from 'html2pdf.js';
+import { 
+  Building2, 
+  ShieldCheck, 
+  Cpu, 
+  ChevronRight, 
+  ArrowRight,
+  Globe,
+  Lock,
+  Zap,
+  CheckCircle2
+} from 'lucide-react';
+// pdfjs-dist and html2pdf.js are now dynamically imported to improve Lighthouse scores
 import { useEmotionTracker } from './useEmotionTracker';
 
 import './App.css';
 import './markdown.css';
-import './markdown.css';
-import './markdown.css';
 
 const TOKEN_SERVER_URL = "http://localhost:8000/token";
 const HEYGEN_TOKEN_URL = "http://localhost:8000/heygen-token";
+
+/* ───────────────────────────────────────────
+   Induction Loading Overlay
+   ─────────────────────────────────────────── */
+function InductionOverlay() {
+  return (
+    <div style={{
+      position: 'fixed',
+      inset: 0,
+      zIndex: 9999,
+      background: 'var(--bg-primary)',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: '32px'
+    }}>
+      <div className="auth-mesh-overlay" style={{ opacity: 0.5 }} />
+      <div className="mesh-glow-sphere sphere-1" style={{ width: '400px', height: '400px' }} />
+      
+      <div style={{ position: 'relative' }}>
+        <div className="avatar-placeholder-executive" style={{ width: '120px', height: '120px', fontSize: '32px' }}>
+          M
+        </div>
+        <div className="monica-loading-shimmer" style={{
+          position: 'absolute',
+          inset: -10,
+          borderRadius: '50%',
+          border: '2px solid var(--accent)',
+          opacity: 0.3,
+          animation: 'soft-pulse 2s infinite'
+        }} />
+      </div>
+
+      <div style={{ textAlign: 'center', zIndex: 10 }}>
+        <h2 className="brand-text-gradient" style={{ fontSize: '28px', marginBottom: '8px' }}>
+          Inducting Monica<span className="brand-dot-end">.</span>
+        </h2>
+        <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '14px', textTransform: 'uppercase', letterSpacing: '0.2em' }}>
+          Synchronizing Digital Replica & Biometric Logic...
+        </p>
+      </div>
+
+      <div style={{
+        width: '200px',
+        height: '2px',
+        background: 'rgba(255,255,255,0.1)',
+        borderRadius: '2px',
+        overflow: 'hidden',
+        position: 'relative'
+      }}>
+        <div style={{
+          position: 'absolute',
+          height: '100%',
+          width: '60%',
+          background: 'var(--accent)',
+          animation: 'shimmer 2s infinite linear'
+        }} />
+      </div>
+    </div>
+  );
+}
 
 /* ───────────────────────────────────────────
    Interview Session View
@@ -39,13 +108,15 @@ function MainStage({ role, company, mode }) {
   const [submitFeedback, setSubmitFeedback] = useState('');
   const [liveGrade, setLiveGrade] = useState(null);
   const [isTyping, setIsTyping] = useState(false);
+  const [isAgentConnected, setIsAgentConnected] = useState(false);
   const textareaRef = useRef(null);
 
   // Subscribe to all tracks (Camera for self-view, Video + Audio + Unknown for Agent)
   const tracks = useTracks([
     { source: Track.Source.Camera, withPlaceholder: true },
     { source: Track.Source.Unknown, withPlaceholder: false },
-    { source: Track.Source.Microphone, withPlaceholder: false }
+    { source: Track.Source.Microphone, withPlaceholder: false },
+    { source: Track.Source.ScreenShare, withPlaceholder: false }
   ]);
 
   // Local camera for self-view
@@ -55,15 +126,28 @@ function MainStage({ role, company, mode }) {
 
   // Explicitly grab the agent's remote audio track
   const agentAudioTrack = tracks.find(
-    t => !t.participant?.isLocal && (t.source === Track.Source.Microphone || t.source === Track.Source.Unknown) && t.publication?.kind === 'audio'
+    t => !t.participant?.isLocal && 
+         t.publication?.kind === 'audio'
   );
 
-  // Explicitly grab the agent's remote video track (Tavus Video Stream)
+  // Explicitly grab the agent's remote video track (Tavus 3D Video Stream)
+  // Hardened discovery: accept BOTH Camera and ScreenShare sources just in case Tavus uses a custom source type.
+  // We prioritize the participant named "Monica (Interviewer)" to avoid confusion with other remote participants.
   const agentVideoTrack = tracks.find(
-    t => !t.participant?.isLocal && t.source === Track.Source.Camera && t.publication?.kind === 'video'
+    t => !t.participant?.isLocal && 
+         (t.participant?.name === 'Monica (Interviewer)' || t.participant?.identity.includes('agent')) &&
+         t.publication?.kind === 'video' &&
+         (t.source === Track.Source.Camera || t.source === Track.Source.ScreenShare || t.source === Track.Source.Unknown)
   );
 
   const { isLoaded, getEmotionSummary, videoRef } = useEmotionTracker(localTrack);
+
+  // Track Agent Connection
+  useEffect(() => {
+    if (agentVideoTrack) {
+      setIsAgentConnected(true);
+    }
+  }, [agentVideoTrack]);
 
   // Periodically send emotion summary to backend
   useEffect(() => {
@@ -145,11 +229,16 @@ function MainStage({ role, company, mode }) {
         display: 'flex',
         flexDirection: 'column',
         gap: '12px',
-        padding: '12px',
-        height: '100%',
-        background: '#f0f0eb',
-        overflowY: 'auto',
+        padding: '24px',
+        height: '100%', // Use parent's flex height
+        maxHeight: '100vh',
+        background: 'transparent',
+        overflow: 'hidden',
+        position: 'relative',
+        zIndex: 5,
+        boxSizing: 'border-box'
       }}>
+        {!isAgentConnected && <InductionOverlay />}
         <video ref={videoRef} autoPlay muted playsInline width="160" height="160" style={{ display: 'none' }} />
         <div className="workspace-layout">
           {/* Left Column: Avatar + Self-View */}
@@ -182,13 +271,26 @@ function MainStage({ role, company, mode }) {
                   }}
                 />
               ) : (
-                <div style={{
-                  width: '80px', height: '80px', borderRadius: '50%',
-                  background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  color: 'white', fontSize: '32px', fontWeight: 'bold'
-                }}>
-                  M
+                <div className="avatar-placeholder-executive">
+                  <div className="monica-loading-shimmer" style={{
+                    position: 'absolute',
+                    inset: 0,
+                    borderRadius: '50%',
+                    background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)',
+                    animation: 'shimmer 2s infinite linear'
+                  }} />
+                  <span style={{ position: 'relative', zIndex: 1 }}>M</span>
+                  <div style={{
+                    position: 'absolute',
+                    bottom: '-30px',
+                    width: '200px',
+                    textAlign: 'center',
+                    fontSize: '10px',
+                    fontWeight: 600,
+                    color: '#C5E898',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.1em'
+                  }}>Connecting to Monica Engine...</div>
                 </div>
               )}
               <div style={{
@@ -238,21 +340,22 @@ function MainStage({ role, company, mode }) {
             </div>
 
             {/* Session Info */}
-            <div className="glass-card" style={{
+            <div className="manifesto-card" style={{
               flex: 1,
               padding: '16px',
               display: 'flex',
               flexDirection: 'column',
+              margin: 0
             }}>
               <span style={{
-                fontSize: '9px', fontWeight: 700, color: 'var(--text-muted)',
+                fontSize: '9px', fontWeight: 700, color: 'rgba(255,255,255,0.4)',
                 textTransform: 'uppercase', letterSpacing: '0.15em',
-              }}>Session</span>
+              }}>Contextual Protocol</span>
               <h4 style={{
-                fontSize: '16px', fontWeight: 700, color: 'var(--text-heading)',
+                fontSize: '16px', fontWeight: 700, color: 'white',
                 margin: '4px 0 2px', lineHeight: 1.3,
               }}>{role}</h4>
-              {company && <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: 0 }}>at {company}</p>}
+              {company && <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', margin: 0 }}>at {company}</p>}
               <div style={{ marginTop: 'auto', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 <span style={{
                   display: 'inline-block',
@@ -284,16 +387,14 @@ function MainStage({ role, company, mode }) {
             minWidth: 0,
           }}>
             {/* Question Panel */}
-            <div style={{
+            <div className="manifesto-card" style={{
               minHeight: '120px',
               maxHeight: '40%',
               overflow: 'auto',
-              borderRadius: 'var(--radius-md)',
-              boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
-              border: '1px solid var(--border-light)',
-              background: '#fff',
               display: 'flex',
               flexDirection: 'column',
+              padding: 0,
+              margin: 0
             }}>
               {/* Header */}
               <div style={{
@@ -318,13 +419,12 @@ function MainStage({ role, company, mode }) {
                   }}>Read-only</span>
                 )}
               </div>
-              {/* Body */}
               <div className="markdown-content" style={{
                 flex: 1,
                 padding: '16px 20px',
                 fontSize: '14px',
                 lineHeight: 1.75,
-                color: '#1e293b',
+                color: 'rgba(255,255,255,0.85)',
                 fontWeight: 400,
                 userSelect: 'none',
                 WebkitUserSelect: 'none',
@@ -448,25 +548,27 @@ function MainStage({ role, company, mode }) {
                 </div>
               ) : (
                 // ── WRITTEN ANSWER AREA (for non-coding roles) ──
-                <div className="glass-card" style={{
+                <div className="manifesto-card" style={{
                   flex: 1,
                   display: 'flex',
                   flexDirection: 'column',
                   overflow: 'hidden',
+                  padding: 0,
+                  margin: 0
                 }}>
                   <div style={{
                     padding: '12px 20px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    borderBottom: '1px solid var(--border-light)',
+                    borderBottom: '1px solid rgba(255,255,255,0.05)',
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <span style={{ fontSize: '14px' }}>✍️</span>
                       <label htmlFor="written-response" style={{
-                        fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)',
+                        fontSize: '11px', fontWeight: 600, color: 'rgba(255,255,255,0.4)',
                         textTransform: 'uppercase', letterSpacing: '0.1em',
-                      }}>Your Response</label>
+                      }}>Executive Response</label>
                     </div>
                     <button
                       onClick={submitCode}
@@ -477,7 +579,7 @@ function MainStage({ role, company, mode }) {
                         borderRadius: 'var(--radius-pill)',
                         border: 'none',
                         background: code.trim() ? '#C5E898' : 'rgba(0,0,0,0.05)',
-                        color: code.trim() ? '#1a2e10' : 'var(--text-muted)',
+                        color: code.trim() ? '#1a2e10' : 'rgba(255,255,255,0.4)',
                         fontSize: '11px',
                         fontWeight: 600,
                         cursor: code.trim() ? 'pointer' : 'default',
@@ -499,7 +601,7 @@ function MainStage({ role, company, mode }) {
                       width: '100%',
                       padding: '16px 20px',
                       background: 'transparent',
-                      color: 'var(--text-heading)',
+                      color: 'white',
                       border: 'none',
                       outline: 'none',
                       resize: 'none',
@@ -517,8 +619,8 @@ function MainStage({ role, company, mode }) {
                   {submitFeedback && (
                     <div style={{
                       padding: '8px 16px',
-                      background: 'rgba(197,232,152,0.15)',
-                      borderTop: '1px solid var(--border-light)',
+                      background: 'rgba(197,232,152,0.1)',
+                      borderTop: '1px solid rgba(255,255,255,0.05)',
                       fontSize: '11px',
                       color: '#4a7c1f',
                       fontWeight: 500,
@@ -536,33 +638,39 @@ function MainStage({ role, company, mode }) {
     );
   }
 
-  // ── GENERAL MODE LAYOUT ──
+  // ── GENERAL MODE LAYOUT (Deep Ink Overhaul) ──
   return (
-    <div style={{
-      flex: 1,
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '16px',
-      padding: '16px',
-      height: '100%',
-      background: '#f0f0eb',
-    }}>
+    <div className="auth-page-container" style={{ height: '100vh', overflow: 'hidden' }}>
+      {!isAgentConnected && <InductionOverlay />}
+      <div className="auth-mesh-overlay" style={{ opacity: 0.4 }} />
+      <div className="mesh-glow-sphere sphere-1" style={{ width: '400px', height: '400px', opacity: 0.3 }} />
+      <div className="mesh-glow-sphere sphere-2" style={{ width: '300px', height: '300px', opacity: 0.2 }} />
+
       <video ref={videoRef} autoPlay muted playsInline width="160" height="160" style={{ display: 'none' }} />
+
       {/* Main Content Area */}
       <div style={{
         flex: 1,
         display: 'flex',
-        gap: '16px',
+        gap: '24px',
+        padding: '24px',
+        height: '100%', // Use parent's flex height
+        maxHeight: '100%',
         minHeight: 0,
+        position: 'relative',
+        zIndex: 5,
+        boxSizing: 'border-box',
+        overflow: 'hidden'
       }}>
         {/* Monica's Avatar (Interviewer) */}
-        <div style={{
+        <div className="video-participant-frame" style={{
           flex: 3,
           position: 'relative',
-          borderRadius: 'var(--radius-lg)',
+          borderRadius: '24px',
           overflow: 'hidden',
-          boxShadow: '0 4px 24px rgba(0,0,0,0.1)',
-          background: '#111827',
+          background: 'rgba(0,0,0,0.4)',
+          backdropFilter: 'blur(20px)',
+          border: '1px solid rgba(130, 179, 66, 0.2)', // Subtle Monica Green Border
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center'
@@ -575,50 +683,64 @@ function MainStage({ role, company, mode }) {
                 height: '100%',
                 objectFit: 'contain',
               }}
+              onSubscriptionStatusChanged={(status) => {
+                console.log('Monica Video Subscription Status:', status);
+              }}
             />
           ) : (
-            <div style={{
-              width: '120px', height: '120px', borderRadius: '50%',
-              background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: 'white', fontSize: '48px', fontWeight: 'bold'
-            }}>
-              M
+            <div className="avatar-placeholder-executive">
+              <div className="monica-loading-shimmer" style={{
+                position: 'absolute',
+                inset: 0,
+                borderRadius: '50%',
+                background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)',
+                animation: 'shimmer 2s infinite linear'
+              }} />
+              <span style={{ position: 'relative', zIndex: 1 }}>M</span>
+              <div style={{
+                position: 'absolute',
+                bottom: '-40px',
+                width: '100%',
+                textAlign: 'center',
+                fontSize: '11px',
+                fontWeight: 600,
+                color: '#C5E898',
+                textTransform: 'uppercase',
+                letterSpacing: '0.15em'
+              }}>Synchronizing Monica Digital Replica...</div>
             </div>
           )}
 
-          {/* Live indicator overlay */}
+          {/* Monica Engine Status Overlay (Elite Executive Polish) */}
           <div style={{
             position: 'absolute',
-            bottom: '20px',
+            bottom: '24px',
             left: '24px',
             display: 'flex',
             alignItems: 'center',
-            gap: '8px',
+            gap: '12px',
+            background: 'rgba(5, 7, 10, 0.6)',
+            padding: '10px 18px',
+            borderRadius: '100px',
+            backdropFilter: 'blur(12px)',
+            border: '1px solid rgba(255,255,255,0.12)',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.4)',
+            zIndex: 10
           }}>
-            <div className="animate-soft-pulse" style={{
-              width: '8px',
-              height: '8px',
-              borderRadius: '50%',
-              background: '#ef4444',
-            }} />
-            <span style={{
-              fontSize: '11px',
-              fontWeight: 600,
-              color: 'rgba(255,255,255,0.7)',
-              letterSpacing: '0.1em',
-              textTransform: 'uppercase',
-              textShadow: '0 1px 3px rgba(0,0,0,0.3)',
-            }}>
-              Live • Monica
-            </span>
-            {isTyping && (
-              <span className="animate-pulse" style={{
-                fontSize: '11px', fontWeight: 700, color: '#C5E898',
-                letterSpacing: '0.1em', textTransform: 'uppercase',
-                textShadow: '0 1px 3px rgba(0,0,0,0.3)',
-              }}> • Taking notes... 📝</span>
-            )}
+            <div className="monica-waveform">
+              <div className="waveform-bar"></div>
+              <div className="waveform-bar"></div>
+              <div className="waveform-bar"></div>
+              <div className="waveform-bar"></div>
+              <div className="waveform-bar"></div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
+              <span style={{ fontSize: '11px', fontWeight: 800, color: 'white', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Monica Engine</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <div style={{ width: '5px', height: '5px', borderRadius: '50%', background: 'var(--accent)', boxShadow: '0 0 8px var(--accent)' }}></div>
+                <span style={{ fontSize: '9px', color: 'rgba(255,255,255,0.6)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Biometric Sync Active</span>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -671,11 +793,12 @@ function MainStage({ role, company, mode }) {
           {agentAudioTrack && <AudioTrack trackRef={agentAudioTrack} />}
 
           {/* Interview Info Card */}
-          <div className="glass-card" style={{
+          <div className="manifesto-card" style={{
             flex: 1,
             padding: '24px',
             display: 'flex',
             flexDirection: 'column',
+            margin: 0
           }}>
             <div style={{ marginBottom: 'auto' }}>
               <span style={{
@@ -690,7 +813,7 @@ function MainStage({ role, company, mode }) {
               <h3 style={{
                 fontSize: '20px',
                 fontWeight: 700,
-                color: 'var(--text-heading)',
+                color: 'white',
                 margin: '8px 0 4px',
                 lineHeight: 1.3,
               }}>
@@ -699,7 +822,7 @@ function MainStage({ role, company, mode }) {
               {company && (
                 <p style={{
                   fontSize: '14px',
-                  color: 'var(--text-muted)',
+                  color: 'rgba(255,255,255,0.5)',
                   margin: 0,
                 }}>
                   at {company}
@@ -737,7 +860,7 @@ function MainStage({ role, company, mode }) {
 
             <div style={{
               paddingTop: '16px',
-              borderTop: '1px solid var(--border-light)',
+              borderTop: '1px solid rgba(255,255,255,0.05)',
               marginTop: '16px',
             }}>
               <div style={{
@@ -746,7 +869,7 @@ function MainStage({ role, company, mode }) {
                 alignItems: 'center',
                 padding: '8px 0',
               }}>
-                <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 500 }}>Status</span>
+                <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', fontWeight: 500 }}>Status</span>
                 <span style={{
                   fontSize: '11px',
                   fontWeight: 600,
@@ -776,7 +899,65 @@ function MainStage({ role, company, mode }) {
 /* ───────────────────────────────────────────
    App Root — Landing Page + Session Router
    ─────────────────────────────────────────── */
-function App() {
+const EliteMetric = ({ value, label, icon: Icon }) => (
+  <div className="manifesto-card metric-card" role="group" aria-label={`Metric: ${label}`}>
+    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px', color: 'var(--accent)' }}>
+      {Icon && <Icon size={24} aria-hidden="true" />}
+    </div>
+    <span className="metric-value">{value}</span>
+    <span className="metric-label">{label}</span>
+  </div>
+);
+
+const LandingFooter = ({ onOpenLegal }) => (
+  <footer className="elite-footer" role="contentinfo">
+    <div className="footer-content">
+      <div className="footer-brand">
+        <h4>Mon<span className="brand-i-container">i<span className="brand-i-dot-highlight"></span></span>ca<span className="brand-dot-end">.</span></h4>
+        <p>Providing the absolute standard in executive AI interview preparation. Secure, private, and uncompromising.</p>
+      </div>
+      <div className="footer-links">
+        <nav aria-label="Platform links">
+          <h5>Platform</h5>
+          <ul>
+            <li><a href="#/" onClick={(e) => { e.preventDefault(); document.getElementById('hero-section')?.scrollIntoView({ behavior: 'smooth' }); }} rel="noopener noreferrer">Technical Mode</a></li>
+            <li><a href="#/" onClick={(e) => { e.preventDefault(); document.getElementById('hero-section')?.scrollIntoView({ behavior: 'smooth' }); }} rel="noopener noreferrer">Behavioral Core</a></li>
+            <li><a href="/recruiter" rel="noopener noreferrer">Recruiter Portal</a></li>
+          </ul>
+        </nav>
+      </div>
+      <div className="footer-links">
+        <nav aria-label="Corporate links">
+          <h5>Corporate</h5>
+          <ul>
+            <li><a href="#/" onClick={(e) => onOpenLegal?.(e, 'privacy')} rel="noopener noreferrer">Privacy Protocol</a></li>
+            <li><a href="#/" onClick={(e) => onOpenLegal?.(e, 'security')} rel="noopener noreferrer">Security Audit</a></li>
+            <li><a href="#/" onClick={(e) => onOpenLegal?.(e, 'terms')} rel="noopener noreferrer">Terms of Service</a></li>
+          </ul>
+        </nav>
+      </div>
+      <div className="footer-links">
+        <nav aria-label="Support links">
+          <h5>Support</h5>
+          <ul>
+            <li><a href="#/" onClick={(e) => onOpenLegal?.(e, 'help')} rel="noopener noreferrer">Help Center</a></li>
+            <li><a href="#/" onClick={(e) => onOpenLegal?.(e, 'status')} rel="noopener noreferrer">API Status</a></li>
+            <li><a href="#/" onClick={(e) => onOpenLegal?.(e, 'contact')} rel="noopener noreferrer">Contact Office</a></li>
+          </ul>
+        </nav>
+      </div>
+    </div>
+    <div className="footer-bottom">
+      <span>© 2026 Monica AI. All Rights Reserved.</span>
+      <div style={{ display: 'flex', gap: '24px' }}>
+        <a href="#/" style={{ color: 'inherit', textDecoration: 'none' }} rel="noopener noreferrer">System Status: Operational</a>
+      </div>
+    </div>
+  </footer>
+);
+
+function App({ guestMode = false, onOpenLegal }) {
+  const { user } = useUser();
   const [token, setToken] = useState(null);
   const [url, setUrl] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -788,6 +969,7 @@ function App() {
   const [resumeText, setResumeText] = useState("");
   const [resumeFilename, setResumeFilename] = useState("");
   const [isParsingPdf, setIsParsingPdf] = useState(false);
+  const [currentRoomName, setCurrentRoomName] = useState("");
 
   const [isInterviewCompleted, setIsInterviewCompleted] = useState(false);
 
@@ -803,6 +985,10 @@ function App() {
     setResumeFilename(file.name);
 
     try {
+      // Dynamic import to reduce initial bundle size (Lighthouse optimization)
+      const pdfjsLib = await import('pdfjs-dist');
+      pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+      
       const arrayBuffer = await file.arrayBuffer();
       const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
       let fullText = "";
@@ -832,7 +1018,14 @@ function App() {
     setIsLoading(true);
     setError(null);
     try {
-      const metadataObj = { role, company, mode, strictness };
+      const metadataObj = {
+        role,
+        company,
+        mode,
+        strictness,
+        userId: guestMode ? "GUEST_USER" : user?.id,
+        userName: guestMode ? "Guest Candidate" : user?.fullName
+      };
       if (resumeText) {
         metadataObj.resumePromptContext = `The candidate uploaded their resume. Use this context if relevant to your questions:\n\n${resumeText.substring(0, 3000)}`; // Cap length just in case
       }
@@ -844,6 +1037,7 @@ function App() {
       const data = await response.json();
       setToken(data.token);
       setUrl(data.url);
+      setCurrentRoomName(data.roomName || data.room_name || "");
       setIsInterviewCompleted(false);
     } catch (err) {
       setError("The interview servers are currently at capacity or offline. Please try again later.");
@@ -866,9 +1060,9 @@ function App() {
   if (isInterviewCompleted) {
     return (
       <main style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-primary)', fontFamily: "'Inter', sans-serif" }}>
-        <div className="glass-card animate-fade-in-up" style={{ padding: '48px', textAlign: 'center', maxWidth: '500px' }}>
-          <h2 style={{ fontSize: '28px', fontWeight: 800, marginBottom: '16px', color: 'var(--text-heading)' }}>Interview Complete</h2>
-          <p style={{ color: 'var(--text-muted)', marginBottom: '32px', lineHeight: 1.6, fontSize: '15px' }}>
+        <div className="manifesto-card animate-fade-in-up" style={{ padding: '48px', textAlign: 'center', maxWidth: '500px' }}>
+          <h2 style={{ fontSize: '28px', fontWeight: 800, marginBottom: '16px', color: 'white' }}>Interview Complete</h2>
+          <p style={{ color: 'rgba(255,255,255,0.6)', marginBottom: '32px', lineHeight: 1.6, fontSize: '15px' }}>
             Thank you for your time. Your responses have been recorded and your mock interview is now concluded.
           </p>
           <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
@@ -879,9 +1073,9 @@ function App() {
               Start New Session
             </button>
             <a
-              href={`/report?room=${room?.name || 'latest'}`}
+              href={`/report?room=${currentRoomName}`}
               target="_blank"
-              rel="noreferrer"
+              rel="noopener noreferrer"
               className="pill-button"
               style={{ background: '#1e293b', color: '#fff' }}
             >
@@ -896,64 +1090,51 @@ function App() {
   /* ── Session View ── */
   if (token) {
     return (
-      <div style={{
-        position: 'fixed',
-        inset: 0,
-        display: 'flex',
-        flexDirection: 'column',
-        background: 'var(--bg-primary)',
-        fontFamily: "'Inter', sans-serif",
-      }}>
+      <div className="auth-page-container" style={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        {/* Background Mesh Orbs */}
+        <div className="auth-mesh-overlay" style={{ opacity: 0.3 }} />
+        <div className="mesh-glow-sphere sphere-1" style={{ width: '500px', height: '500px' }} />
+
         {/* Session Header */}
-        <header role="banner" style={{
+        <header role="banner" className="manifesto-card" style={{
           padding: '16px 32px',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          borderBottom: '1px solid var(--border-light)',
-          background: 'var(--bg-card)',
+          borderRadius: 0,
+          borderLeft: 'none', borderRight: 'none', borderTop: 'none',
+          background: 'rgba(15, 20, 25, 0.7)',
+          position: 'relative',
+          zIndex: 100
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <span style={{
-              fontSize: '18px',
-              fontWeight: 800,
-              color: 'var(--text-heading)',
-              letterSpacing: '-0.02em',
-            }}>
-              Monica
-            </span>
-            <span style={{
-              fontSize: '11px',
-              fontWeight: 500,
-              color: '#16a34a',
-              background: 'rgba(22,163,74,0.08)',
-              padding: '4px 10px',
-              borderRadius: 'var(--radius-pill)',
-            }}>
-              Session Active
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <h2 className="brand-text-gradient" style={{ fontSize: '24px', margin: 0 }}>
+              Mon<span className="brand-i-container">i<span className="brand-i-dot-highlight" style={{ width: '6px', height: '6px' }}></span></span>ca<span className="brand-dot-end">.</span>
+            </h2>
+            <div style={{
+              height: '16px', width: '1px', background: 'rgba(255,255,255,0.1)'
+            }} />
+            <span className="safety-badge-tiny" style={{ background: 'rgba(22,163,74,0.1)', color: '#4ade80' }}>
+              PROTOCOL ACTIVE
             </span>
           </div>
           <button
             onClick={logout}
+            className="manifesto-card"
             style={{
               padding: '8px 20px',
-              borderRadius: 'var(--radius-pill)',
-              border: '1px solid rgba(239,68,68,0.2)',
               background: 'rgba(239,68,68,0.05)',
-              color: '#dc2626',
-              fontSize: '12px',
-              fontWeight: 600,
+              border: '1px solid rgba(239,68,68,0.2)',
+              color: '#ff4d4d',
+              fontSize: '11px',
+              fontWeight: 700,
               cursor: 'pointer',
-              transition: 'all 0.2s',
-            }}
-            onMouseOver={(e) => {
-              e.target.style.background = 'rgba(239,68,68,0.1)';
-            }}
-            onMouseOut={(e) => {
-              e.target.style.background = 'rgba(239,68,68,0.05)';
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
+              margin: 0
             }}
           >
-            End Session
+            End Protocol
           </button>
         </header>
 
@@ -973,47 +1154,108 @@ function App() {
     );
   }
 
-  /* ── Landing Page ── */
+  // ── GENERAL MODE LAYOUT (Deep Ink Overhaul) ──
   return (
-    <main style={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '40px 24px',
-      fontFamily: "'Inter', sans-serif",
-      background: 'var(--bg-primary)',
-    }}>
-      <div style={{ width: '100%', maxWidth: '540px' }}>
+    <div className="auth-page-container" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+      <div className="auth-mesh-overlay" />
+      <div className="mesh-glow-sphere sphere-1" />
+      <div className="mesh-glow-sphere sphere-2" />
+      
+      {/* Natural Document Flow */}
+      <div style={{ 
+        width: '100%', 
+        flex: 1,
+        display: 'flex', 
+        flexDirection: 'column',
+        alignItems: 'center',
+        padding: '80px 24px 60px',
+        position: 'relative',
+        zIndex: 10
+      }}>
+        {/* Monica Presence Card */}
+        <div className="monica-presence-card" style={{ 
+          position: 'fixed', 
+          bottom: '40px', 
+          left: '40px',
+          zIndex: 9999 
+        }}>
+          <img
+            src="/monica_executive_portrait.png"
+            alt="Monica Executive AI Portrait"
+            className="presence-avatar"
+            loading="lazy"
+            width="40"
+            height="40"
+          />
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <span style={{ fontSize: '13px', fontWeight: 600, color: 'white' }}>Monica is Online</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <div className="presence-status-dot"></div>
+              <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.7)', fontWeight: 500 }}>Ready to interview</span>
+            </div>
+          </div>
+        </div>
+
+      <div style={{ width: '100%', maxWidth: '540px', margin: '0 auto', position: 'relative', zIndex: 10 }}>
         {/* Header */}
         <div className="animate-fade-in-up" style={{
           textAlign: 'center',
           marginBottom: '48px',
         }}>
-          <h1 style={{
+          <h1 id="hero-section" className="brand-text-gradient" style={{
             fontSize: 'clamp(48px, 8vw, 72px)',
             fontWeight: 900,
-            color: 'var(--text-heading)',
             margin: 0,
             letterSpacing: '-0.04em',
             lineHeight: 1.1,
           }}>
-            Monica<span style={{ color: 'var(--accent)' }}>.</span>
+            Mon<span className="brand-i-container">i<span className="brand-i-dot-highlight"></span></span>ca<span className="brand-dot-end">.</span>
           </h1>
           <p style={{
-            fontSize: '15px',
-            color: 'var(--text-muted)',
-            marginTop: '12px',
-            fontWeight: 400,
+            fontSize: '18px',
+            color: 'rgba(255,255,255,0.5)',
+            marginTop: '16px',
+            fontWeight: 500,
             letterSpacing: '0.02em',
           }}>
-            Executive Interview Coach
+            {guestMode ? "Elite Guest Practice Mode" : "The Private Executive AI Interview Coach."}
           </p>
         </div>
 
+        {/* Ethical AI Manifesto */}
+        <div className="ethical-manifesto-container animate-fade-in-up" style={{ animationDelay: '0.1s', marginBottom: '40px' }}>
+          <div className="manifesto-card">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+              <span className="safety-badge-tiny">Consumer Safety Early</span>
+              <span style={{ fontSize: '11px', color: 'var(--accent)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                Ethical AI Manifesto
+              </span>
+            </div>
+            <h3 style={{ fontSize: '20px', fontWeight: 700, margin: '0 0 16px 0', color: 'white' }}>Our Privacy Promise</h3>
+
+            <div className="manifesto-grid">
+              <div className="manifesto-item">
+                <span className="item-icon">🔒</span>
+                <div className="item-content">
+                  <h4>Local Biometrics</h4>
+                  <p>Emotion AI runs 100% locally in your browser. No biometric data is ever stored on our servers.</p>
+                </div>
+              </div>
+              <div className="manifesto-item">
+                <span className="item-icon">⚖️</span>
+                <div className="item-content">
+                  <h4>Bias-Free Logic</h4>
+                  <p>Monica's decision engine is audited for fairness, evaluating you purely on technical and behavioral merit.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Form Card */}
-        <div className="glass-card animate-fade-in-up animate-delay-1" style={{
+        <div className="executive-glass animate-fade-in-up animate-delay-1" style={{
           padding: 'clamp(32px, 5vw, 48px)',
+          marginBottom: '40px'
         }}>
           {/* Inputs Row */}
           <div style={{
@@ -1027,7 +1269,7 @@ function App() {
                 display: 'block',
                 fontSize: '11px',
                 fontWeight: 600,
-                color: 'var(--text-muted)',
+                color: 'rgba(255,255,255,0.4)',
                 textTransform: 'uppercase',
                 letterSpacing: '0.1em',
                 marginBottom: '8px',
@@ -1045,22 +1287,22 @@ function App() {
                   width: '100%',
                   padding: '14px 18px',
                   borderRadius: 'var(--radius-md)',
-                  border: '1px solid var(--border-medium)',
-                  background: 'var(--bg-primary)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  background: 'rgba(0,0,0,0.2)',
                   fontSize: '15px',
                   fontWeight: 400,
-                  color: 'var(--text-heading)',
+                  color: 'white',
                   outline: 'none',
-                  transition: 'border-color 0.2s, box-shadow 0.2s',
+                  transition: 'all 0.2s',
                   fontFamily: 'inherit',
                 }}
                 onFocus={(e) => {
-                  e.target.style.borderColor = '#C5E898';
-                  e.target.style.boxShadow = '0 0 0 3px rgba(197,232,152,0.2)';
+                  e.target.style.borderColor = 'var(--accent)';
+                  e.target.style.background = 'rgba(255,255,255,0.05)';
                 }}
                 onBlur={(e) => {
-                  e.target.style.borderColor = 'var(--border-medium)';
-                  e.target.style.boxShadow = 'none';
+                  e.target.style.borderColor = 'rgba(255,255,255,0.1)';
+                  e.target.style.background = 'rgba(0,0,0,0.2)';
                 }}
               />
             </div>
@@ -1069,7 +1311,7 @@ function App() {
                 display: 'block',
                 fontSize: '11px',
                 fontWeight: 600,
-                color: 'var(--text-muted)',
+                color: 'rgba(255,255,255,0.4)',
                 textTransform: 'uppercase',
                 letterSpacing: '0.1em',
                 marginBottom: '8px',
@@ -1087,22 +1329,22 @@ function App() {
                   width: '100%',
                   padding: '14px 18px',
                   borderRadius: 'var(--radius-md)',
-                  border: '1px solid var(--border-medium)',
-                  background: 'var(--bg-primary)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  background: 'rgba(0,0,0,0.2)',
                   fontSize: '15px',
                   fontWeight: 400,
-                  color: 'var(--text-heading)',
+                  color: 'white',
                   outline: 'none',
-                  transition: 'border-color 0.2s, box-shadow 0.2s',
+                  transition: 'all 0.2s',
                   fontFamily: 'inherit',
                 }}
                 onFocus={(e) => {
-                  e.target.style.borderColor = '#C5E898';
-                  e.target.style.boxShadow = '0 0 0 3px rgba(197,232,152,0.2)';
+                  e.target.style.borderColor = 'var(--accent)';
+                  e.target.style.background = 'rgba(255,255,255,0.05)';
                 }}
                 onBlur={(e) => {
-                  e.target.style.borderColor = 'var(--border-medium)';
-                  e.target.style.boxShadow = 'none';
+                  e.target.style.borderColor = 'rgba(255,255,255,0.1)';
+                  e.target.style.background = 'rgba(0,0,0,0.2)';
                 }}
               />
             </div>
@@ -1114,7 +1356,7 @@ function App() {
               display: 'block',
               fontSize: '11px',
               fontWeight: 600,
-              color: 'var(--text-muted)',
+              color: 'rgba(255,255,255,0.4)',
               textTransform: 'uppercase',
               letterSpacing: '0.1em',
               marginBottom: '10px',
@@ -1139,9 +1381,9 @@ function App() {
                   style={{
                     padding: '12px 16px',
                     borderRadius: 'var(--radius-md)',
-                    border: mode === m.id ? '2px solid var(--accent)' : '1px solid var(--border-medium)',
-                    background: mode === m.id ? 'var(--accent-subtle)' : 'transparent',
-                    color: mode === m.id ? '#4a7c1f' : 'var(--text-muted)',
+                    border: mode === m.id ? '2px solid var(--accent)' : '1px solid rgba(255,255,255,0.1)',
+                    background: mode === m.id ? 'rgba(109, 139, 116, 0.1)' : 'rgba(0,0,0,0.2)',
+                    color: mode === m.id ? 'var(--accent)' : 'rgba(255,255,255,0.5)',
                     fontSize: '13px',
                     fontWeight: 600,
                     cursor: 'pointer',
@@ -1161,7 +1403,7 @@ function App() {
               display: 'block',
               fontSize: '11px',
               fontWeight: 600,
-              color: 'var(--text-muted)',
+              color: 'rgba(255,255,255,0.4)',
               textTransform: 'uppercase',
               letterSpacing: '0.1em',
               marginBottom: '10px',
@@ -1175,7 +1417,7 @@ function App() {
             }}>
               <span style={{
                 fontSize: '12px',
-                color: strictness <= 2 ? '#4a7c1f' : 'var(--text-muted)',
+                color: strictness <= 2 ? '#C5E898' : 'rgba(255,255,255,0.3)',
                 fontWeight: strictness <= 2 ? 600 : 400,
                 minWidth: '50px',
               }}>Relaxed</span>
@@ -1203,7 +1445,7 @@ function App() {
               />
               <span style={{
                 fontSize: '12px',
-                color: strictness >= 4 ? '#dc2626' : 'var(--text-muted)',
+                color: strictness >= 4 ? '#ff4d4d' : 'rgba(255,255,255,0.3)',
                 fontWeight: strictness >= 4 ? 600 : 400,
                 minWidth: '40px',
                 textAlign: 'right',
@@ -1213,7 +1455,7 @@ function App() {
               textAlign: 'center',
               marginTop: '6px',
               fontSize: '11px',
-              color: 'var(--text-muted)',
+              color: 'rgba(255,255,255,0.4)',
               fontWeight: 400,
             }}>
               {['', 'Practice mode — gentle and encouraging', 'Light challenge — supportive with follow-ups', 'Standard — balanced warmth and rigor', 'Rigorous — demanding, expects precision', 'Stress test — relentless and uncompromising'][strictness]}
@@ -1243,7 +1485,7 @@ function App() {
               display: 'block',
               fontSize: '11px',
               fontWeight: 600,
-              color: 'var(--text-muted)',
+              color: 'rgba(255,255,255,0.4)',
               textTransform: 'uppercase',
               letterSpacing: '0.1em',
               marginBottom: '8px',
@@ -1287,7 +1529,7 @@ function App() {
               />
 
               {isParsingPdf ? (
-                <span style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: 500 }}>
+                <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)', fontWeight: 500 }}>
                   <span className="animate-soft-pulse" style={{ display: 'inline-block', marginRight: '6px' }}>Reading PDF...</span>
                 </span>
               ) : resumeFilename ? (
@@ -1295,8 +1537,8 @@ function App() {
                   ✓ {resumeFilename} loaded
                 </span>
               ) : (
-                <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
-                  Drag & Drop or <span style={{ color: 'var(--text-heading)', fontWeight: 600, textDecoration: 'underline' }}>Browse</span>
+                <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)' }}>
+                  Drag & Drop or <span style={{ color: 'white', fontWeight: 600, textDecoration: 'underline' }}>Browse</span>
                 </span>
               )}
             </div>
@@ -1307,135 +1549,223 @@ function App() {
             id="start-interview-btn"
             onClick={startInterview}
             disabled={isLoading}
-            className="pill-button pill-button-primary"
+            className="support-submit"
             style={{
               width: '100%',
               padding: '18px',
               fontSize: '15px',
+              margin: 0
             }}
           >
-            {isLoading ? "Connecting..." : "Start Interview"}
+            {isLoading ? "Connecting..." : "Initiate Executive Protocol"}
           </button>
 
-          {/* Footer Text */}
-          <p style={{
-            textAlign: 'center',
-            fontSize: '11px',
-            color: 'var(--text-muted)',
-            marginTop: '24px',
-            lineHeight: 1.6,
-            fontWeight: 400,
-          }}>
-            Professional interview simulation.
-            <br />
-            Practice and prepare for any role.
-          </p>
+          {/* Setup Footer */}
+          <div style={{ height: '40px' }} />
         </div>
       </div>
-    </main>
+      </div>
+      
+      {/* Grounding Section - Matching Landing Page Visual Volume */}
+      <section style={{ 
+        width: '100%', 
+        padding: '100px 24px', 
+        textAlign: 'center',
+        background: 'rgba(5, 7, 10, 0.4)',
+        borderTop: '1px solid rgba(255, 255, 255, 0.03)',
+        marginTop: '60px'
+      }}>
+        <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+          <h3 className="brand-text-gradient" style={{ fontSize: '32px', fontWeight: 800, marginBottom: '24px' }}>
+            Calibrated to Executive Standards.
+          </h3>
+          <p style={{ fontSize: '18px', color: 'rgba(255,255,255,0.4)', maxWidth: '540px', margin: '0 auto 40px', lineHeight: 1.6 }}>
+            Monica's assessment logic is grounded in technical merit and behavioral intelligence, providing a private sanctuary for professional growth.
+          </p>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '32px' }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '24px', fontWeight: 800, color: 'white' }}>Verified</div>
+              <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.2em', color: 'var(--accent)', fontWeight: 700, marginTop: '4px' }}>Logic Engine</div>
+            </div>
+            <div style={{ height: '40px', width: '1px', background: 'rgba(255,255,255,0.1)' }} />
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '24px', fontWeight: 800, color: 'white' }}>Grounded</div>
+              <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.2em', color: 'var(--accent)', fontWeight: 700, marginTop: '4px' }}>Bias Audit</div>
+            </div>
+            <div style={{ height: '40px', width: '1px', background: 'rgba(255,255,255,0.1)' }} />
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '24px', fontWeight: 800, color: 'white' }}>Secure</div>
+              <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.2em', color: 'var(--accent)', fontWeight: 700, marginTop: '4px' }}>Local-Only</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer Restored - Natural Flow */}
+      <LandingFooter onOpenLegal={onOpenLegal} />
+    </div>
   );
 }
 
 // ───────────────────────────────────────────
 // Recruiter Portal View
 // ───────────────────────────────────────────
-function RecruiterPortal() {
-  const [roomName, setRoomName] = useState("");
-  const [token, setToken] = useState(null);
-  const [url, setUrl] = useState(null);
-  const [error, setError] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
+// --- RECRUITER PORTAL ---
+function RecruiterPortal({ onOpenLegal }) {
+  const [sessions, setSessions] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const joinRoom = async () => {
-    if (!roomName.trim()) {
-      setError("Please enter a room name.");
-      return;
-    }
-    setIsLoading(true);
-    setError(null);
-    try {
-      const response = await fetch(`http://localhost:8000/recruiter-token?room=${encodeURIComponent(roomName.trim())}`);
-      if (!response.ok) throw new Error("Could not fetch recruiter token.");
-      const data = await response.json();
-      setToken(data.token);
-      setUrl(data.url);
-    } catch (err) {
-      console.error(err);
-      setError("Failed to join room. It may not exist.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  useEffect(() => {
+    fetch('http://localhost:8000/published-sessions')
+      .then(res => res.json())
+      .then(data => {
+        setSessions(data);
+        setIsLoading(false);
+      })
+      .catch(err => {
+        console.error("Recruiter Portal Error:", err);
+        setIsLoading(false);
+      });
+  }, []);
 
-  if (token) {
-    return (
-      <LiveKitRoom
-        token={token}
-        serverUrl={url}
-        video={false}
-        audio={true}
-        connect={true}
-        style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: '#f0f0eb' }}
-      >
-        <RecruiterStage roomName={roomName} onLeave={() => { setToken(null); setUrl(null); }} />
-        <RoomAudioRenderer />
-      </LiveKitRoom>
-    );
-  }
-
-  return (
-    <main style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-primary)', fontFamily: "'Inter', sans-serif" }}>
-      <div className="glass-card animate-fade-in-up" autoFocus style={{ padding: '48px', width: '100%', maxWidth: '440px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
-        <div style={{ textAlign: 'center' }}>
-          <h2 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--text-heading)', margin: 0 }}>Recruiter Portal</h2>
-          <p style={{ fontSize: '14px', color: 'var(--text-muted)', marginTop: '8px' }}>Silently observe active live sessions.</p>
-        </div>
-        <div>
-          <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '8px' }}>Active Room Name</label>
-          <input type="text" value={roomName} onChange={e => setRoomName(e.target.value)} placeholder="e.g. interview-a1b2c3d4" style={{ width: '100%', padding: '14px 16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-medium)', background: 'rgba(255,255,255,0.6)', fontSize: '15px', color: 'var(--text-heading)' }} />
-        </div>
-        {error && <div style={{ color: '#dc2626', fontSize: '13px', textAlign: 'center' }}>{error}</div>}
-        <button onClick={joinRoom} disabled={isLoading} className="pill-button pill-button-primary" style={{ width: '100%', padding: '16px' }}>
-          {isLoading ? "Connecting..." : "Spectate Session"}
-        </button>
-      </div>
-    </main>
+  if (isLoading) return (
+    <div className="auth-page-container">
+      <div className="mesh-glow-sphere sphere-1" />
+      <span className="safety-badge-tiny" style={{ background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.5)', padding: '12px 24px' }}>
+        SYNCHRONIZING EXECUTIVE TALENT DATA...
+      </span>
+    </div>
   );
-}
-
-function RecruiterStage({ roomName, onLeave }) {
-  const tracks = useTracks([
-    { source: Track.Source.Camera, withPlaceholder: false },
-    { source: Track.Source.Microphone, withPlaceholder: false }
-  ]);
-
-  // Find candidate and agent tracks
-  const candidateVideo = tracks.find(t => t.participant?.identity.startsWith('user-') && t.source === Track.Source.Camera);
-  const agentVideo = tracks.find(t => t.participant?.identity === 'Monica' && t.source === Track.Source.Camera);
 
   return (
-    <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', height: '100%' }}>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', padding: '16px 24px', borderRadius: 'var(--radius-md)', boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}>
-        <div>
-          <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700 }}>Recruiter Observation</h3>
-          <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Room: {roomName}</span>
-        </div>
-        <button onClick={onLeave} style={{ padding: '8px 16px', background: '#ef4444', color: '#fff', borderRadius: 'var(--radius-pill)', border: 'none', fontWeight: 600, cursor: 'pointer' }}>Leave Session</button>
-      </header>
+    <div className="auth-page-container">
+      <div className="auth-mesh-overlay" style={{ position: 'fixed', zIndex: 0 }} />
+      <div className="mesh-glow-sphere sphere-1" style={{ width: '600px', height: '600px', top: '-10%', left: '20%', position: 'fixed' }} />
 
-      <div style={{ display: 'flex', gap: '16px', flex: 1 }}>
-        {/* Agent Feed */}
-        <div style={{ flex: 1, background: '#111827', borderRadius: 'var(--radius-md)', overflow: 'hidden', position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-          {agentVideo ? <VideoTrack trackRef={agentVideo} style={{ width: '100%', height: '100%', objectFit: 'contain' }} /> : <span style={{ color: '#fff', fontSize: '24px' }}>Waiting for Agent...</span>}
-          <div style={{ position: 'absolute', bottom: '16px', left: '16px', background: 'rgba(0,0,0,0.6)', padding: '4px 12px', borderRadius: '16px', color: '#fff', fontSize: '12px', fontWeight: 600 }}>Monica (AI)</div>
+      <div style={{ flex: 1, padding: '60px 40px', position: 'relative', zIndex: 10 }}>
+
+      <div style={{ maxWidth: '1200px', margin: '0 auto', position: 'relative', zIndex: 10 }}>
+        <div style={{ marginBottom: '60px' }}>
+          <h1 className="brand-text-gradient" style={{ fontSize: '42px', margin: 0 }}>
+            Talent Dashboard<span className="brand-dot-end">.</span>
+          </h1>
+          <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '16px', marginTop: '12px', fontWeight: 500 }}>
+            Displaying candidate-approved sessions verified by Monica AI.
+          </p>
         </div>
 
-        {/* Candidate Feed */}
-        <div style={{ flex: 1, background: '#111827', borderRadius: 'var(--radius-md)', overflow: 'hidden', position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-          {candidateVideo ? <VideoTrack trackRef={candidateVideo} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ color: '#fff', fontSize: '24px' }}>Waiting for Candidate...</span>}
-          <div style={{ position: 'absolute', bottom: '16px', left: '16px', background: 'rgba(0,0,0,0.6)', padding: '4px 12px', borderRadius: '16px', color: '#fff', fontSize: '12px', fontWeight: 600 }}>Candidate</div>
+        <div className="executive-glass" style={{ padding: 0, overflow: 'hidden', borderLeft: 'none' }}>
+          <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, textAlign: 'left' }}>
+            <thead>
+              <tr style={{ background: 'rgba(255,255,255,0.05)', backdropFilter: 'blur(10px)' }}>
+                <th style={{ padding: '24px 20px', fontSize: '11px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.1em', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>Candidate Profile</th>
+                <th style={{ padding: '24px 20px', fontSize: '11px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.1em', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>Context</th>
+                <th style={{ padding: '24px 20px', fontSize: '11px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.1em', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>AI Rigor Score</th>
+                <th style={{ padding: '24px 20px', fontSize: '11px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.1em', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>Outcome</th>
+                <th style={{ padding: '24px 20px', textAlign: 'right', borderBottom: '1px solid rgba(255,255,255,0.05)' }}></th>
+              </tr>
+            </thead>
+            <tbody>
+              {sessions.map((s, idx) => (
+                <tr key={s.id} style={{
+                  background: idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.01)',
+                  transition: 'background 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                  cursor: 'default'
+                }}
+                  className="dashboard-row-hover"
+                >
+                  <td style={{ padding: '28px 20px', borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                    <div style={{ color: 'white', fontWeight: 700, fontSize: '16px', letterSpacing: '-0.01em' }}>{s.role}</div>
+                    <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '12px', marginTop: '6px', fontFamily: 'monospace' }}>ID: {s.id.slice(-8).toUpperCase()}</div>
+                  </td>
+                  <td style={{ padding: '28px 20px', borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                    <div style={{ color: 'white', opacity: 0.9, fontSize: '14px', fontWeight: 500 }}>{s.company || "General Industry"}</div>
+                    <div style={{ color: 'var(--accent)', fontSize: '10px', textTransform: 'uppercase', fontWeight: 800, marginTop: '6px', letterSpacing: '0.1em' }}>{s.mode.replace('_', ' ')}</div>
+                  </td>
+                  <td style={{ padding: '28px 20px', borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div style={{
+                        width: '40px', height: '40px', borderRadius: '12px',
+                        background: s.score >= 80 ? 'rgba(109, 139, 116, 0.05)' : 'rgba(255, 77, 77, 0.05)',
+                        border: `1px solid ${s.score >= 80 ? 'rgba(109, 139, 116, 0.2)' : 'rgba(255, 77, 77, 0.2)'}`,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: '14px', fontWeight: 900,
+                        color: s.score >= 80 ? 'var(--accent)' : '#ff4d4d'
+                      }}>
+                        {s.score}
+                      </div>
+                      <div style={{ height: '4px', width: '60px', background: 'rgba(255,255,255,0.05)', borderRadius: '2px', overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${s.score}%`, background: s.score >= 80 ? 'var(--accent)' : '#ff4d4d' }} />
+                      </div>
+                    </div>
+                  </td>
+                  <td style={{ padding: '28px 20px', borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                    <span style={{
+                      padding: '6px 14px', borderRadius: '20px', fontSize: '11px', fontWeight: 800,
+                      background: s.score >= 80 ? 'rgba(109, 139, 116, 0.1)' : 'rgba(255, 77, 77, 0.1)',
+                      color: s.score >= 80 ? 'var(--accent)' : '#ff4d4d',
+                      border: `1px solid ${s.score >= 80 ? 'rgba(109, 139, 116, 0.15)' : 'rgba(255, 77, 77, 0.15)'}`,
+                      letterSpacing: '0.05em'
+                    }}>
+                      {s.score >= 80 ? "ELITE / READY" : "POTENTIAL / NEARLY READY"}
+                    </span>
+                  </td>
+                  <td style={{ padding: '28px 20px', textAlign: 'right', borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                    <button
+                      onClick={() => window.location.href = `/report?room=${s.id}`}
+                      className="manifesto-card"
+                      style={{
+                        padding: '10px 20px', fontSize: '12px', fontWeight: 700,
+                        border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer',
+                        background: 'rgba(255,255,255,0.05)', color: 'white',
+                        margin: 0, transition: 'all 0.2s'
+                      }}
+                    >
+                      Audit Session
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {sessions.length === 0 && (
+                <tr>
+                  <td colSpan="5" style={{ padding: '80px', textAlign: 'center' }}>
+                    <div style={{ fontSize: '32px', marginBottom: '16px' }}>📂</div>
+                    <div style={{ color: 'rgba(255,255,255,0.3)', fontStyle: 'italic', fontSize: '15px' }}>
+                      No published talent profiles currently synchronized.
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
+      </div>
+      {/* Monica Presence Card Restored */}
+      <div className="monica-presence-card" style={{ 
+        position: 'fixed', 
+        bottom: '40px', 
+        left: '40px',
+        zIndex: 9999 
+      }}>
+        <img
+          src="/monica_executive_portrait.png"
+          alt="Monica Executive AI Portrait"
+          className="presence-avatar"
+          loading="lazy"
+          width="40"
+          height="40"
+        />
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: 'white' }}>Monica is Online</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div className="presence-status-dot"></div>
+            <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.7)', fontWeight: 500 }}>Ready to interview</span>
+          </div>
+        </div>
+      </div>
+
+      <LandingFooter onOpenLegal={onOpenLegal} />
     </div>
   );
 }
@@ -1443,10 +1773,44 @@ function RecruiterStage({ roomName, onLeave }) {
 // ───────────────────────────────────────────
 // Report View
 // ───────────────────────────────────────────
+const ExecutiveMetricChart = ({ label, value, color = 'var(--accent)' }) => {
+  const percentage = Math.min(100, Math.max(0, value * 10)); // Scale 1-10 to 0-100
+  const radius = 36;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference - (percentage / 100) * circumference;
+
+  return (
+    <div className="executive-glass" style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '12px 16px', borderRadius: '16px', margin: '0' }}>
+      <div style={{ position: 'relative', width: '48px', height: '48px' }}>
+        <svg width="48" height="48" viewBox="0 0 100 100" style={{ transform: 'rotate(-90deg)' }}>
+          <circle cx="50" cy="50" r={radius} fill="transparent" stroke="rgba(255,255,255,0.05)" strokeWidth="8" />
+          <circle
+            cx="50" cy="50" r={radius} fill="transparent" stroke={color}
+            strokeWidth="8" strokeDasharray={circumference}
+            strokeDashoffset={offset} strokeLinecap="round"
+            style={{ filter: `drop-shadow(0 0 5px ${color})`, transition: 'stroke-dashoffset 1s ease-out' }}
+          />
+        </svg>
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 800, color: 'white' }}>
+          {value}
+        </div>
+      </div>
+      <div>
+        <p style={{ margin: 0, fontSize: '11px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</p>
+        <div style={{ height: '4px', width: '80px', background: 'rgba(255,255,255,0.05)', borderRadius: '2px', marginTop: '4px', overflow: 'hidden' }}>
+          <div style={{ height: '100%', width: `${percentage}%`, background: color, filter: `drop-shadow(0 0 2px ${color})` }} />
+        </div>
+      </div>
+    </div>
+  );
+};
+
 function ReportView() {
   const [report, setReport] = useState(null);
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isPublished, setIsPublished] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -1464,6 +1828,7 @@ function ReportView() {
       })
       .then(data => {
         setReport(data);
+        setIsPublished(!!data.isPublished);
         setIsLoading(false);
       })
       .catch(err => {
@@ -1472,80 +1837,582 @@ function ReportView() {
       });
   }, []);
 
-  const downloadPDF = () => {
-    const element = document.getElementById('report-content');
-    html2pdf().from(element).set({
-      margin: 10,
-      filename: `Interview_Report_${report?.roomName}.pdf`,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2 },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-    }).save();
+  const downloadPDF = async () => {
+    try {
+      setIsLoading(true);
+      // Dynamic import to reduce initial bundle size (Lighthouse optimization)
+      const html2pdf = (await import('html2pdf.js')).default;
+      const element = document.getElementById('report-content');
+      await html2pdf().from(element).set({
+        margin: 10,
+        filename: `Interview_Report_${report?.roomName}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      }).save();
+    } catch (err) {
+      console.error("PDF generation failed:", err);
+      setError("Failed to generate PDF. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  if (isLoading) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading Report...</div>;
-  if (error) return <div style={{ padding: '40px', textAlign: 'center', color: 'red' }}>Error: {error}</div>;
+  const togglePublication = async () => {
+    const params = new URLSearchParams(window.location.search);
+    const room = params.get('room');
+    const newState = !isPublished;
+
+    setIsPublishing(true);
+    try {
+      const res = await fetch(`http://localhost:8000/publish-report/${room}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ published: newState })
+      });
+      if (res.ok) {
+        setIsPublished(newState);
+      }
+    } catch (err) {
+      console.error("Failed to update privacy settings:", err);
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
+  if (isLoading) return (
+    <div className="auth-page-container">
+      <div className="mesh-glow-sphere sphere-1" />
+      <span style={{ color: 'rgba(255,255,255,0.5)', fontWeight: 600, letterSpacing: '0.1em' }}>ANALYZING PERFORMANCE...</span>
+    </div>
+  );
+  if (error) return (
+    <div className="auth-page-container">
+      <div style={{ padding: '40px', textAlign: 'center', color: '#ff4d4d', fontWeight: 600 }}>Error: {error}</div>
+    </div>
+  );
 
   return (
-    <div style={{ padding: '40px', background: '#f8fafc', minHeight: '100vh', fontFamily: "'Inter', sans-serif" }}>
-      <div style={{ maxWidth: '800px', margin: '0 auto', display: 'flex', justifyContent: 'flex-end', marginBottom: '20px' }}>
-        <button onClick={downloadPDF} className="pill-button pill-button-primary">Download PDF</button>
-      </div>
+    <div className="auth-page-container">
+      <div className="auth-mesh-overlay" style={{ position: 'fixed', zIndex: 0 }} />
+      <div className="mesh-glow-sphere sphere-1" style={{ top: '-10%', left: '10%', position: 'fixed' }} />
 
-      <div id="report-content" style={{ maxWidth: '800px', margin: '0 auto', background: '#fff', padding: '48px', borderRadius: '8px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
-        <header style={{ borderBottom: '2px solid #e2e8f0', paddingBottom: '24px', marginBottom: '32px' }}>
-          <h1 style={{ fontSize: '32px', fontWeight: 800, color: '#0f172a', margin: '0 0 8px 0' }}>AI Interview Feedback Report</h1>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', color: '#64748b', fontSize: '14px' }}>
-            <div><strong>Role:</strong> {report.role}</div>
-            <div><strong>Company:</strong> {report.company || 'N/A'}</div>
-            <div><strong>Mode:</strong> {report.mode}</div>
-            <div><strong>Date:</strong> {new Date(report.createdAt).toLocaleString()}</div>
-            <div><strong>Final Score:</strong> <span style={{ color: report.score >= 80 ? '#16a34a' : '#ef4444', fontWeight: 700, fontSize: '18px' }}>{report.score}/100</span></div>
+      <div style={{ flex: 1, padding: '60px 40px', position: 'relative', zIndex: 10 }}>
+
+      <div style={{ maxWidth: '1000px', margin: '0 auto', position: 'relative', zIndex: 10 }}>
+        {/* Header Branding */}
+        <div style={{ textAlign: 'center', marginBottom: '60px' }}>
+          <h1 className="brand-text-gradient" style={{ fontSize: '48px', margin: 0 }}>
+            Mon<span className="brand-i-container">i<span className="brand-i-dot-highlight"></span></span>ca<span className="brand-dot-end">.</span>
+          </h1>
+          <h2 style={{ fontSize: '12px', color: 'var(--accent)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.2em', marginTop: '12px' }}>
+            Executive Interview Synopsis
+          </h2>
+        </div>
+
+        {/* Action Bar */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', gap: '16px' }}>
+          {/* Sovereign Consent Toggle */}
+          <div className="manifesto-card" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 20px', margin: 0 }}>
+            <div style={{ flex: 1 }}>
+              <p style={{ margin: 0, fontSize: '11px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Privacy Control</p>
+              <p style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: isPublished ? 'var(--accent)' : 'white' }}>
+                {isPublished ? "Shared with Recruiters" : "Private Session"}
+              </p>
+            </div>
+            <button
+              onClick={togglePublication}
+              disabled={isPublishing}
+              style={{
+                width: '44px', height: '22px', borderRadius: '11px',
+                background: isPublished ? 'var(--accent)' : 'rgba(255,255,255,0.1)',
+                border: 'none', cursor: 'pointer', position: 'relative',
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                opacity: isPublishing ? 0.5 : 1
+              }}
+            >
+              <div style={{
+                width: '18px', height: '18px', borderRadius: '9px',
+                background: 'white', position: 'absolute', top: '2px',
+                left: isPublished ? '24px' : '2px',
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+              }} />
+            </button>
           </div>
-        </header>
 
-        {report.feedback && (
-          <section style={{ marginBottom: '40px' }}>
-            <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#334155', marginBottom: '16px' }}>Executive Summary</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
-              <div style={{ background: '#f0fdf4', padding: '16px', borderRadius: '8px', border: '1px solid #bbf7d0' }}>
-                <h3 style={{ color: '#16a34a', fontSize: '16px', margin: '0 0 8px 0' }}>Strengths</h3>
-                <p style={{ color: '#14532d', margin: 0, fontSize: '14px', lineHeight: 1.6 }}>{report.feedback.strengths || "Not recorded."}</p>
+          <button
+            onClick={downloadPDF}
+            className="manifesto-card"
+            style={{
+              padding: '12px 24px', color: 'white', fontSize: '13px',
+              fontWeight: 700, cursor: 'pointer', display: 'flex',
+              alignItems: 'center', gap: '8px', border: '1px solid rgba(255,255,255,0.1)',
+              background: 'rgba(255,255,255,0.05)', margin: 0
+            }}
+          >
+            <span>📥</span> Download Executive PDF
+          </button>
+        </div>
+
+        <div id="report-content" style={{ display: 'grid', gridTemplateColumns: 'minmax(300px, 1fr) 2fr', gap: '24px' }}>
+          {/* Sidebar: Performance Metrics */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            <div className="executive-glass" style={{ padding: '24px' }}>
+              <h3 style={{ fontSize: '14px', color: 'rgba(255,255,255,0.6)', marginBottom: '20px', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Score Card</h3>
+              <div style={{ textAlign: 'center', padding: '20px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', marginBottom: '20px' }}>
+                <div style={{ fontSize: '64px', fontWeight: 900, color: (report?.score || 0) >= 80 ? 'var(--accent)' : '#ff4d4d', textShadow: `0 0 30px ${(report?.score || 0) >= 80 ? 'rgba(109, 139, 116, 0.3)' : 'rgba(255, 77, 77, 0.3)'}` }}>
+                  {report?.score || 0}<span style={{ fontSize: '24px', opacity: 0.5 }}>%</span>
+                </div>
+                <p style={{ color: 'white', fontWeight: 700, margin: '8px 0 0 0', textTransform: 'uppercase' }}>{report?.feedback?.verdict || "Assessment Pending"}</p>
               </div>
-              <div style={{ background: '#fef2f2', padding: '16px', borderRadius: '8px', border: '1px solid #fecaca' }}>
-                <h3 style={{ color: '#dc2626', fontSize: '16px', margin: '0 0 8px 0' }}>Areas for Improvement</h3>
-                <p style={{ color: '#7f1d1d', margin: 0, fontSize: '14px', lineHeight: 1.6 }}>{report.feedback.improvements || "Not recorded."}</p>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                  <span style={{ color: 'rgba(255,255,255,0.5)' }}>Candidate</span>
+                  <span style={{ color: 'white', fontWeight: 600 }}>{report?.username || "Executive Candidate"}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                  <span style={{ color: 'rgba(255,255,255,0.5)' }}>Target Role</span>
+                  <span style={{ color: 'white', fontWeight: 600 }}>{report?.role || "N/A"}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                  <span style={{ color: 'rgba(255,255,255,0.5)' }}>Status</span>
+                  <span style={{ color: 'var(--accent)', fontWeight: 700 }}>VERIFIED AI-SCORE</span>
+                </div>
               </div>
             </div>
-          </section>
-        )}
 
-        <section>
-          <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#334155', marginBottom: '16px', borderBottom: '1px solid #e2e8f0', paddingBottom: '8px' }}>Session Transcript</h2>
-          <div style={{ fontSize: '13px', lineHeight: 1.6, color: '#475569' }}>
-            {report.transcript.length > 0 ? report.transcript.map((msg, i) => (
-              <div key={i} style={{ marginBottom: '12px' }}>
-                <strong style={{ color: msg.speaker === 'Interviewer' ? '#3b82f6' : '#1e293b' }}>{msg.speaker}:</strong>
-                <span style={{ marginLeft: '8px' }}>{msg.text}</span>
+            <div className="executive-glass" style={{ padding: '24px' }}>
+              <h3 style={{ fontSize: '14px', color: 'rgba(255,255,255,0.6)', marginBottom: '20px', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Executive Metrics</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <ExecutiveMetricChart label="Technical Skill" value={report.feedback?.metrics?.technical || 0} color="#82b342" />
+                <ExecutiveMetricChart label="Problem Solving" value={report.feedback?.metrics?.problem_solving || 0} color="#6D8B74" />
+                <ExecutiveMetricChart label="Communication" value={report.feedback?.metrics?.communication || 0} color="#a2d2ff" />
+                <ExecutiveMetricChart label="Code Integrity" value={report.feedback?.metrics?.code_quality || 0} color="#ffffff" />
+                <ExecutiveMetricChart label="Optimization" value={report.feedback?.metrics?.optimization || 0} color="#4a7c1f" />
               </div>
-            )) : <p>No transcript available.</p>}
+            </div>
           </div>
-        </section>
+
+          {/* Main Feed: Narrative Feedback */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            {report.feedback && (
+              <>
+                <div className="executive-glass" style={{ borderLeft: '4px solid var(--accent)', padding: '24px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                    <span style={{ fontSize: '24px' }}>💎</span>
+                    <h3 style={{ margin: 0, fontSize: '18px', color: 'white', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Key Strengths</h3>
+                  </div>
+                  <p style={{ lineHeight: 1.8, color: 'rgba(255,255,255,0.8)', fontSize: '15px', whiteSpace: 'pre-wrap' }}>{report?.feedback?.strengths || "Strengths analysis was not generated for this session."}</p>
+                </div>
+
+                <div className="executive-glass" style={{ borderLeft: '4px solid #ff4d4d', padding: '24px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                    <span style={{ fontSize: '24px' }}>📈</span>
+                    <h3 style={{ margin: 0, fontSize: '18px', color: 'white', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Growth Areas</h3>
+                  </div>
+                  <p style={{ lineHeight: 1.8, color: 'rgba(255,255,255,0.8)', fontSize: '15px', whiteSpace: 'pre-wrap' }}>{report.feedback.improvements}</p>
+                </div>
+              </>
+            )}
+
+            <div className="executive-glass" style={{ padding: '20px', background: 'linear-gradient(to right, rgba(130, 179, 66, 0.08), transparent)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                <h4 style={{ fontSize: '11px', color: 'var(--accent)', margin: 0, textTransform: 'uppercase', letterSpacing: '0.1em' }}>AI Calibration Integrity</h4>
+                <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)' }}>HIGH CONFIDENCE</span>
+              </div>
+              <div style={{ height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', overflow: 'hidden' }}>
+                <div style={{ width: `${report.score}%`, height: '100%', background: 'var(--accent)' }} />
+              </div>
+              <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', marginTop: '8px' }}>High technical engagement and consistent verbal delivery detected via Monica Engine.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      </div>
+      {/* Monica Presence Card Restored */}
+      <div className="monica-presence-card" style={{ 
+        position: 'fixed', 
+        bottom: '40px', 
+        left: '40px',
+        zIndex: 9999 
+      }}>
+        <img
+          src="/monica_executive_portrait.png"
+          alt="Monica Executive AI Portrait"
+          className="presence-avatar"
+          loading="lazy"
+          width="40"
+          height="40"
+        />
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: 'white' }}>Monica is Online</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div className="presence-status-dot"></div>
+            <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.7)', fontWeight: 500 }}>Ready to interview</span>
+          </div>
+        </div>
+      </div>
+
+      <LandingFooter onOpenLegal={onOpenLegal} />
+    </div>
+  );
+}
+// ───────────────────────────────────────────
+// ───────────────────────────────────────────
+// Legal & Policy Components
+// ───────────────────────────────────────────
+function LegalSheet({ type, onClose }) {
+  const [isSending, setIsSending] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [formState, setFormState] = useState({ subject: "", message: "" });
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsSending(true);
+    try {
+      const resp = await fetch("/support", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subject: formState.subject, message: formState.message })
+      });
+      if (resp.ok) {
+        setIsSubmitted(true);
+        setTimeout(() => { setIsSubmitted(false); onClose(); }, 2500);
+      } else {
+        alert("Transmission failed. Please try again.");
+      }
+    } catch (err) {
+      alert("Network error during transmission.");
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const content = {
+    privacy: {
+      title: "Privacy & Data Ethics",
+      body: (
+        <div role="region" aria-label="Privacy Policy">
+          <p><strong>Your privacy is a fundamental constraint of our architecture.</strong></p>
+          <p>Monica AI is built on a "Local-First" biometric model. All facial analysis for emotion detection is processed in real-time on your local GPU; no biometric signatures or images are ever stored or transmitted.</p>
+          <p><strong>Data Governance:</strong> We persist only the metadata necessary for your workspace (e.g., resumes and interview transcripts). This data is encrypted using AES-256 protocols and is used strictly for your personal performance metrics.</p>
+          <p><strong>User Sovereignty:</strong> You retain absolute ownership of your data and can purge your history via the account dashboard at any time.</p>
+        </div>
+      )
+    },
+    terms: {
+      title: "Terms of Professionalism",
+      body: (
+        <div role="region" aria-label="Terms of Service">
+          <p><strong>Executive Conduct:</strong> This platform is designed for professional development. Users are expected to maintain professional standards during AI interactions.</p>
+          <p><strong>System Integrity:</strong> Any attempt to reverse-engineer or disrupt the Monica Protocol is strictly prohibited to ensure the security of all partners.</p>
+          <p><strong>No Guarantee of Employment:</strong> Monica is an advanced technical coach. While she provides high-fidelity feedback, the use of this service does not guarantee specific job placement or legal certification.</p>
+        </div>
+      )
+    },
+    help: {
+      title: "Executive Support Desk",
+      body: (
+        <div role="region" aria-label="Support Form">
+          <div className="support-header">
+            <h2 className="brand-text-gradient">Support Center</h2>
+            <p style={{ color: 'rgba(255,255,255,0.4)', marginTop: '-8px' }}>Executive Assistance Registry</p>
+          </div>
+
+          <div className="manifesto-grid" style={{ marginBottom: '20px' }}>
+            <div className="manifesto-item">
+              <span className="item-icon" aria-hidden="true">⚡</span>
+              <div className="item-content">
+                <h4>6-Hour Service</h4>
+                <p>Prioritized executive queue</p>
+              </div>
+            </div>
+          </div>
+
+          {isSubmitted ? (
+            <div className="support-success" role="alert">
+              <span className="success-icon" aria-hidden="true">✅</span>
+              <h3 className="success-title">Request Registered</h3>
+              <p>An executive agent will review your transmission shortly.</p>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div className="support-input-group">
+                <label htmlFor="support-subject" style={{ display: 'block', fontSize: '11px', textTransform: 'uppercase', color: 'var(--accent)', marginBottom: '8px' }}>Inquiry Classification</label>
+                <input
+                  id="support-subject"
+                  type="text"
+                  placeholder="Subject of inquiry..."
+                  className="support-input"
+                  required
+                  value={formState.subject}
+                  onChange={e => setFormState({ ...formState, subject: e.target.value })}
+                />
+              </div>
+
+              <div className="support-input-group">
+                <label htmlFor="support-message" style={{ display: 'block', fontSize: '11px', textTransform: 'uppercase', color: 'var(--accent)', marginBottom: '8px' }}>Detailed Transmission</label>
+                <textarea
+                  id="support-message"
+                  placeholder="Provide context for our executive team..."
+                  className="support-input"
+                  rows={5}
+                  required
+                  style={{ resize: 'none' }}
+                  value={formState.message}
+                  onChange={e => setFormState({ ...formState, message: e.target.value })}
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="support-submit"
+                disabled={isSending}
+                aria-busy={isSending}
+              >
+                {isSending ? 'Transmitting...' : 'Transmit Request'}
+              </button>
+            </form>
+          )}
+        </div>
+      )
+    }
+  };
+
+  const active = content[type] || content.privacy;
+
+  return (
+    <div className="legal-sheet-overlay" role="dialog" aria-modal="true" aria-labelledby="legal-title" onClick={onClose}>
+      <div className="legal-sheet-content" onClick={e => e.stopPropagation()}>
+        <button className="legal-sheet-close" onClick={onClose} aria-label="Close dialog">×</button>
+        <div className="legal-text">
+          <h2 id="legal-title">{active.title}</h2>
+          {active.body}
+        </div>
       </div>
     </div>
   );
 }
 
-// ───────────────────────────────────────────
+
 // App Export
 // ───────────────────────────────────────────
 export default function AppRouter() {
-  const path = window.location.pathname;
-  if (path === '/recruiter') {
-    return <RecruiterPortal />;
-  }
+  const [path, setPath] = useState(window.location.pathname.replace(/\/$/, ""));
+  const [activeLegal, setActiveLegal] = useState(null);
+
+  useEffect(() => {
+    const handleLocationChange = () => setPath(window.location.pathname.replace(/\/$/, ""));
+    window.addEventListener('popstate', handleLocationChange);
+    // Also listen for hash changes if needed, but pathname is key here
+    return () => window.removeEventListener('popstate', handleLocationChange);
+  }, []);
+
+  const closeLegal = () => setActiveLegal(null);
+  const openLegal = (e, type) => {
+    e.preventDefault();
+    setActiveLegal(type);
+  };
+
+  // The feedback report should remain publicly viewable without logging in
   if (path === '/report') {
     return <ReportView />;
   }
-  return <App />;
+
+  // Common wrapper for protected routes (App and Recruiter Portal)
+  return (
+    <>
+      {activeLegal && <LegalSheet type={activeLegal} onClose={closeLegal} />}
+      <SignedIn>
+        {/* Persistent User Profile Header */}
+        <div style={{
+          position: 'absolute',
+          top: '24px',
+          right: '32px',
+          zIndex: 9999,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px'
+        }}>
+          {path === '/recruiter' && (
+            <button
+              onClick={() => window.location.href = '/'}
+              className="manifesto-card"
+              style={{ padding: '8px 16px', fontSize: '12px', background: 'rgba(255,255,255,0.05)', color: 'white', cursor: 'pointer', border: '1px solid rgba(255,255,255,0.1)' }}
+            >
+              Back to Office
+            </button>
+          )}
+          <div className="user-profile-prompter">
+            <span className="profile-details-helper">Manage Account</span>
+            <UserButton afterSignOutUrl="/" appearance={{
+              elements: {
+                avatarBox: { width: 40, height: 40, border: '2px solid rgba(255,255,255,0.1)' },
+                userButtonTrigger: { padding: '4px' }
+              }
+            }} />
+          </div>
+        </div>
+        {/* Render Route */}
+        {path === '/recruiter' ? <RecruiterPortal onOpenLegal={openLegal} /> : <App onOpenLegal={openLegal} />}
+      </SignedIn>
+
+      <SignedOut>
+        {path.startsWith('/guest-practice') ? (
+          <App guestMode={true} onOpenLegal={openLegal} />
+        ) : (
+          <AuthRouter onOpenLegal={openLegal} />
+        )}
+      </SignedOut>
+    </>
+  );
 }
+
+function AuthRouter({ onOpenLegal }) {
+  const [hash, setHash] = useState(window.location.hash);
+
+  useEffect(() => {
+    const handleHashChange = () => setHash(window.location.hash);
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
+  const isSignUp = hash === '#/sign-up';
+
+  return (
+    <div className="auth-page-container">
+
+      <div className="auth-mesh-overlay" style={{ overflow: 'hidden' }}>
+        {/* Executive Ambient Glows (Moved inside clipped container to fix layout gaps) */}
+        <div className="mesh-glow-sphere sphere-1" />
+        <div className="mesh-glow-sphere sphere-2" />
+      </div>
+
+      {/* Scroll Protocol V2 Hero Orientation */}
+      <div className="auth-centered-wrapper" style={{ padding: '40px 24px' }}>
+        {/* Monica Presence Card */}
+        <div className="monica-presence-card">
+          <img
+            src="/monica_executive_portrait.png"
+            alt="Monica Executive AI Portrait"
+            className="presence-avatar"
+            loading="lazy"
+            width="40"
+            height="40"
+          />
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <span style={{ fontSize: '13px', fontWeight: 600, color: 'white', textShadow: '0 1px 4px rgba(0,0,0,0.5)' }}>Monica is Online</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <div className="presence-status-dot"></div>
+              <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.7)', fontWeight: 500 }}>Ready to interview</span>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ textAlign: 'center', marginBottom: '40px', position: 'relative', zIndex: 10 }}>
+          <h1 id="hero-section" className="brand-text-gradient" style={{ fontSize: '72px', margin: 0 }}>
+            Mon<span className="brand-i-container">i<span className="brand-i-dot-highlight"></span></span>ca<span className="brand-dot-end">.</span>
+          </h1>
+          <p style={{ fontSize: '18px', color: 'rgba(255,255,255,0.5)', marginTop: '8px', fontWeight: 500, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+            Executive AI Interview Coach
+          </p>
+        </div>
+
+        <div className="fancy-auth-wrapper">
+          {isSignUp ? (
+            <SignUp routing="hash" />
+          ) : (
+            <SignIn routing="hash" />
+          )}
+        </div>
+
+        <div style={{ marginTop: '32px', textAlign: 'center', position: 'relative', zIndex: 10 }}>
+          <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '13px', marginBottom: '16px' }}>— or —</p>
+          <button
+            onClick={() => window.location.href = '/guest-practice'}
+            className="manifesto-card"
+            style={{
+              padding: '14px 32px', background: 'rgba(255,255,255,0.03)',
+              border: '1px solid rgba(255,255,255,0.1)', color: 'white',
+              fontSize: '14px', fontWeight: 600, cursor: 'pointer',
+              letterSpacing: '0.05em'
+            }}
+          >
+            Quick Practice <span style={{ opacity: 0.5, fontWeight: 400 }} aria-hidden="true">(No Account Needed)</span>
+          </button>
+        </div>
+      </div>
+
+      {/* NEW: Landing Page Extensions (Appended to AuthRouter) */}
+      <section className="landing-section">
+        <div style={{ textAlign: 'center', marginBottom: '80px' }}>
+          <h2 className="brand-text-gradient" style={{ fontSize: '42px', margin: '0 0 16px 0' }}>The Monica Standard.</h2>
+          <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '18px', maxWidth: '600px', margin: '0 auto' }}>
+            Unrivaled performance metrics verified by over 100,000+ executive-level interview simulations.
+          </p>
+        </div>
+
+        <div className="metric-grid">
+          <EliteMetric value="0.4ms" label="Latency Protocol" icon={Zap} />
+          <EliteMetric value="99.7%" label="Clarity Score" icon={CheckCircle2} />
+          <EliteMetric value="24/7" label="Monica Availability" icon={Building2} />
+          <EliteMetric value="AES-256" label="Privacy Floor" icon={ShieldCheck} />
+        </div>
+      </section>
+
+      <section className="landing-section" style={{ background: 'rgba(255,255,255,0.01)', borderTop: '1px solid rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '80px', alignItems: 'center' }}>
+          <div>
+            <span className="safety-badge-tiny" style={{ marginBottom: '24px' }}>Strategic Roadmap</span>
+            <h3 style={{ fontSize: '36px', fontWeight: 800, margin: '0 0 24px 0', color: 'white' }}>How Monica Crafts Your Success.</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+              {[
+                { title: "Behavioral Blueprint", desc: "AI maps your personality against leadership criteria." },
+                { title: "Technical Stress Test", desc: "Live coding and problem solving under realistic pressure." },
+                { title: "Boutique Feedback", desc: "Granular analysis of tone, posture, and technical precision." }
+              ].map((step, i) => (
+                <div key={i} style={{ display: 'flex', gap: '20px' }}>
+                    <div style={{ 
+                      width: '32px', height: '32px', borderRadius: '50%', 
+                      background: 'rgba(109, 139, 116, 0.1)', border: '1px solid rgba(109, 139, 116, 0.2)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: '12px', fontWeight: 900, color: 'var(--accent)', flexShrink: 0
+                    }}>
+                      {i + 1}
+                    </div>
+                    <div>
+                      <h5 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: 700, color: 'white' }}>{step.title}</h5>
+                      <p style={{ margin: 0, fontSize: '14px', color: 'rgba(255,255,255,0.4)', lineHeight: 1.5 }}>{step.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="manifesto-card" style={{ padding: '40px', background: 'rgba(5, 7, 10, 0.5)', position: 'relative', overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '2px', background: 'linear-gradient(to right, transparent, var(--accent), transparent)' }} />
+              <pre style={{ margin: 0, color: 'var(--accent)', fontSize: '12px', opacity: 0.8, fontFamily: 'monospace', lineHeight: 1.6 }}>
+                {`// Monica Protocol v2.4.0\n// Initializing Core Analysis...\n[SUCCESS] Emotion Mapping Active\n[SUCCESS] Technical Rigor Calibrated\n[SUCCESS] Bias Filtering Verified\n// Strategic insight generated.`}
+              </pre>
+            </div>
+          </div>
+        </section>
+
+        <section className="landing-section" style={{ textAlign: 'center' }}>
+          <h3 style={{ fontSize: '32px', fontWeight: 800, marginBottom: '32px' }}>Ready to Elevate Your Practice?</h3>
+          <button 
+            type="button"
+            className="pill-button pill-button-primary"
+            onClick={() => window.location.href='/guest-practice'}
+            style={{ padding: '20px 60px', fontSize: '18px' }}
+            aria-label="Begin guest practice session"
+          >
+            Begin Experience <ArrowRight size={20} style={{ marginLeft: '12px' }} />
+          </button>
+        </section>
+
+        <LandingFooter onOpenLegal={onOpenLegal} />
+      </div>
+    );
+  }

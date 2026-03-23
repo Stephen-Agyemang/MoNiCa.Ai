@@ -89,4 +89,4 @@ This map is written in **Mermaid syntax**. As you improve the project, you can e
 | **Universal Mode** | ✅ PASS | Monica now adapts to **any industry** (Nursing, Law, CEO, RA) instantly. |
 
 ---
-*Created by **Darrshs** | Powered by **Antigravity AI***
+*Created by **Darrshs**

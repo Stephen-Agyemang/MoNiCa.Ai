@@ -85,7 +85,8 @@ async def get_token(room: str = None, role: str = "Candidate", metadata: str = N
 
     # Initialize the interview transcript record in SQLite
     try:
-        database.create_session(room, role, company_name, interview_mode)
+        user_id = m_dict.get("userId") if metadata else None
+        database.create_session(room, role, company_name, interview_mode, user_id=user_id)
     except Exception as e:
         logger.error(f"Failed to create DB session: {e}")
     
@@ -132,17 +133,8 @@ async def get_recruiter_token(room: str):
 @app.get("/report/{room_name}")
 async def get_report(room_name: str):
     """Retrieves the full interview session data for generating a PDF report."""
-    import sqlite3
     try:
-        conn = sqlite3.connect("interview_sessions.db")
-        cursor = conn.cursor()
-        cursor.execute('''
-            SELECT role, company, mode, transcript, code_submissions, score, feedback_json, created_at
-            FROM interview_sessions
-            WHERE id = ?
-        ''', (room_name,))
-        row = cursor.fetchone()
-        conn.close()
+        row = database.get_session_data(room_name)
         
         if not row:
             raise HTTPException(status_code=404, detail="Interview session not found.")
@@ -156,13 +148,95 @@ async def get_report(room_name: str):
             "codeSubmissions": json.loads(row[4]) if row[4] else [],
             "score": row[5],
             "feedback": json.loads(row[6]) if row[6] else None,
-            "createdAt": row[7]
+            "createdAt": row[7].isoformat() if hasattr(row[7], 'isoformat') else str(row[7])
         }
     except Exception as e:
         logger.error(f"Failed to fetch report for {room_name}: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch report data.")
+@app.get("/published-sessions")
+async def get_published_sessions():
+    """Recruiter Portal Endpoint: Returns only candidate-approved sessions."""
+    try:
+        rows = database.get_published_sessions()
+        return [
+            {
+                "id": r[0],
+                "role": r[1],
+                "company": r[2],
+                "mode": r[3],
+                "score": r[4],
+                "createdAt": r[5]
+            } for r in rows
+        ]
+    except Exception as e:
+        logger.error(f"Failed to fetch published sessions: {e}")
+        raise HTTPException(status_code=500, detail="Failed to load recruiter dashboard.")
+
+@app.post("/publish-report/{room_name}")
+async def publish_report(room_name: str, payload: dict):
+    """Candidate Opt-In: Explicitly share or hide a report from recruiters."""
+    published = payload.get("published", False)
+    try:
+        database.set_session_published(room_name, published)
+        return {"status": "success", "published": published}
+    except Exception as e:
+        logger.error(f"Failed to toggle publication for {room_name}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to update privacy settings.")
+
+@app.post("/support")
+async def post_support_request(request: Request):
+    """Securely handles incoming support tickets, saving them to DB and triggering a Formspree relay."""
+    import urllib.request
+    import json
+
+    try:
+        data = await request.json()
+        email = data.get("email", "Anonymous")
+        subject = data.get("subject", "No Subject")
+        message = data.get("message", "")
+
+        if not message:
+            raise HTTPException(status_code=400, detail="Message content is required.")
+
+        # 1. Permanent Storage (Supabase)
+        database.create_support_request(email, subject, message)
+        logger.info(f"Support Request Persisted: {subject} from {email}")
+
+        # 2. Hybrid Relay (Formspree)
+        formspree_url = os.getenv("FORMSPREE_URL")
+
+        if formspree_url:
+            try:
+                # Construct Payload for Formspree
+                payload = {
+                    "email": email,
+                    "subject": f"Monica Support: {subject}",
+                    "message": message
+                }
+                
+                req = urllib.request.Request(
+                    formspree_url, 
+                    data=json.dumps(payload).encode('utf-8'),
+                    headers={'Content-Type': 'application/json', 'User-Agent': 'Monica-AI-Backend'}
+                )
+                
+                with urllib.request.urlopen(req) as response:
+                    if response.status == 200:
+                        logger.info("Formspree Relay Successful.")
+                    else:
+                        logger.error(f"Formspree Relay returned status: {response.status}")
+            except Exception as relay_err:
+                logger.error(f"Formspree Relay Failed: {relay_err}")
+        else:
+            logger.warning("Formspree Relay Skipped: FORMSPREE_URL not set in .env")
+
+        return {"status": "success", "message": "Executive Support Request Received."}
+
+    except Exception as e:
+        logger.error(f"Failed to process support request: {e}")
+        raise HTTPException(status_code=500, detail="Executive Support Engine Encountered an Error.")
 
 if __name__ == "__main__":
     import uvicorn
     # Run the server on Port 8000
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="127.0.0.1", port=8000)
