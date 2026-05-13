@@ -58,6 +58,6 @@ This document outlines the strategic evolution of Monica from a mock interview t
 > [!IMPORTANT]
 > This roadmap is a living document. We prioritize features based on user feedback and the evolving landscape of AI-driven recruitment.
 
-- **Cloud Backend Deployment**: Deploy agent.py and server.py to a cloud VM/container host like Render or AWS to support stable, remote multi-user concurrency without bottlenecking the local development machine.
+- **Cloud Backend Deployment**: Deploy agent.py and server.py to a cloud VM/container host like AWS to support stable, remote multi-user concurrency without bottlenecking the local development machine.
 
 - **Monolith Deconstruction (Modular Architecture)**: Refactor the ~2,500-line `App.jsx` file into distinct, focused component directories (`src/pages/`, `src/components/`) to guarantee scalability, readability, and easier future feature integration.
