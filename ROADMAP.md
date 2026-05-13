@@ -9,8 +9,6 @@ This document outlines the strategic evolution of Monica from a mock interview t
 
 - **Multimodal Core**: Seamless integration of Tavus (Video), ElevenLabs (Audio), and OpenAI (Intelligence).
 - **Interviewer Persona**: Refined "Monica" behavior to simulate real-world, collaborative problem-solving.
-- **Zero-Shot Dynamic Engine**: Monica generates custom interview blueprints instantly for any profession.
-- **Microservices Architecture**: Codebase fully decoupled into React, FastAPI, and LiveKit Python Worker containers.
 - **Executive UI**: Strict 100vh layout with "Monica Induction" protocols for a premium SaaS experience.
 - **Sovereign Consent**: A unique approach to data privacy where users control session visibility to recruiters.
 
@@ -60,4 +58,6 @@ This document outlines the strategic evolution of Monica from a mock interview t
 > [!IMPORTANT]
 > This roadmap is a living document. We prioritize features based on user feedback and the evolving landscape of AI-driven recruitment.
 
-- **Cloud Backend Deployment (UP NEXT)**: Deploy Docker containers to a cloud VM/container host like Render, AWS ECS, or DigitalOcean to support stable, remote multi-user concurrency.
+- **Cloud Backend Deployment**: Deploy agent.py and server.py to a cloud VM/container host like Render or AWS to support stable, remote multi-user concurrency without bottlenecking the local development machine.
+
+- **Monolith Deconstruction (Modular Architecture)**: Refactor the ~2,500-line `App.jsx` file into distinct, focused component directories (`src/pages/`, `src/components/`) to guarantee scalability, readability, and easier future feature integration.

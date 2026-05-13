@@ -24,33 +24,35 @@ User → React Frontend → LiveKit Room → FastAPI Agent → AI APIs → Datab
 
 ## Tech Stack
 
-- **Infrastructure:** Docker, Docker Compose, Nginx.
 - **Frontend:** React 18, Vite, @livekit/components-react, face-api.js.
 - **Backend:** FastAPI, Python 3.10+, livekit-agents.
-- **AI Integration:** OpenAI (LLM, Zero-Shot Dynamic Engine), ElevenLabs (TTS), Tavus (AI Avatar).
+- **AI Integration:** OpenAI (LLM), ElevenLabs (TTS), Tavus (AI Avatar).
 - **Security & Support:** Clerk (Authentication), Formspree (Support Relay).
 - **Database:** PostgreSQL (Supabase), SQLite (Development fallback).
 - **Export Engine:** html2pdf.js.
 
 ## Running the Project Locally
 
-The entire application is completely containerized. You do not need to install Node, Python, or WebRTC dependencies on your host machine.
+### 1. Backend Setup
+The backend requires Python 3.10+ and a valid LiveKit environment.
 
-### 1. Prerequisites
-- Docker Desktop installed and running.
-- A `.env` file in the root directory containing your LiveKit, OpenAI, and Supabase credentials.
-
-### 2. Start the Stack
 ```bash
-docker-compose up --build
+# Install dependencies
+pip install fastapi uvicorn livekit-agents python-dotenv psycopg2-binary livekit-plugins-openai livekit-plugins-elevenlabs livekit-plugins-tavus
+
+# Start the token and API server
+python server.py
+
+# Launch the AI interview agent worker
+python agent.py dev
 ```
 
-This single command will:
-1. Build the React SPA and serve it via Nginx.
-2. Spin up the FastAPI backend on port 8000.
-3. Start the LiveKit WebRTC Python Worker (Monica's brain) to intercept room creations.
-
-Navigate to `http://localhost` to start your interview.
+### 2. Frontend Setup
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
 ## Environment Variables
 

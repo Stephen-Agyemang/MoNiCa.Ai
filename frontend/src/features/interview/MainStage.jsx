@@ -218,7 +218,7 @@ function MainStage({ role, company, mode }) {
     const recent = emotions ? emotions.slice(-20) : [];
     const positive = recent.filter(e => ['neutral', 'happy', 'surprised'].includes(e.emotion)).length;
     const composureScore = recent.length > 0 ? Math.round((positive / recent.length) * 100) : 100;
-    
+
     // Determine color based on composure
     const scoreColor = composureScore >= 70 ? 'var(--accent)' : composureScore >= 40 ? '#fbbf24' : '#ef4444';
 

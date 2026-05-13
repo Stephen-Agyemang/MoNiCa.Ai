@@ -17,7 +17,6 @@ from livekit.agents import (
 )
 from livekit.agents.voice import Agent, AgentSession, RunContext
 from livekit.plugins import openai, silero, elevenlabs, tavus
-import openai as openai_sdk
 from prompts import TECHNICAL_INTERVIEW_PROMPT, STRICTNESS_INSTRUCTIONS, CLOSING_ASSESSMENT_PROMPT
 import database
 
@@ -252,30 +251,7 @@ async def entrypoint(ctx: JobContext):
         }
         
         base_instruction = mode_prompts.get(mode, BEHAVIORAL_INTERVIEW_PROMPT)
-        
-        # --- DYNAMIC BLUEPRINT GENERATION ---
-        logger.info(f"Generating dynamic blueprint for {user_role} at {company}...")
-        blueprint_json_str = "{}"
-        try:
-            oai_client = openai_sdk.AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-            sys_msg = f"You are an elite FAANG hiring manager at {company}."
-            user_msg = f"Create an interview blueprint for a '{user_role}' role focusing on a '{mode}' interview. Output ONLY valid JSON containing three keys: 'core_competencies' (array of strings), 'interview_structure' (array of strings outlining the rounds), and 'example_scenarios' (array of strings with specific, difficult scenarios)."
-            
-            completion = await oai_client.chat.completions.create(
-                model="gpt-4o",
-                messages=[
-                    {"role": "system", "content": sys_msg},
-                    {"role": "user", "content": user_msg}
-                ],
-                response_format={"type": "json_object"}
-            )
-            blueprint_json_str = completion.choices[0].message.content
-            logger.info(f"Generated Blueprint: {blueprint_json_str}")
-        except Exception as e:
-            logger.error(f"Failed to generate dynamic blueprint: {e}")
-            blueprint_json_str = '{"error": "Failed to generate blueprint. Rely on general knowledge."}'
-            
-        final_instructions = base_instruction.replace("{role}", user_role).replace("{company}", company).replace("{blueprint_json}", blueprint_json_str)
+        final_instructions = base_instruction.replace("{role}", user_role).replace("{company}", company)
         strictness_level = max(1, min(5, strictness))
         
         # 1c. Dynamic Rigor Calibration (e.g. FAANG boost)
@@ -302,7 +278,7 @@ async def entrypoint(ctx: JobContext):
         monica_chat_ctx = llm.ChatContext()
         monica_chat_ctx.add_message(role="system", content=final_instructions)
         
-        emotion_msg = llm.ChatMessage(role="system", content=[])
+        emotion_msg = llm.ChatMessage(role="system", content="")
         
         monica_agent = Agent(
             instructions=final_instructions,

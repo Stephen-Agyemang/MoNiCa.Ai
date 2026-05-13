@@ -123,9 +123,9 @@ export function ReportView({ onOpenLegal }) {
             }}>
               <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', background: 'var(--accent)' }} />
               <div style={{ display: 'flex', alignItems: 'center', gap: '20px', zIndex: 1 }}>
-                <div style={{ 
-                  width: '48px', height: '48px', borderRadius: '12px', 
-                  background: 'rgba(130, 179, 66, 0.2)', color: 'var(--accent)', 
+                <div style={{
+                  width: '48px', height: '48px', borderRadius: '12px',
+                  background: 'rgba(130, 179, 66, 0.2)', color: 'var(--accent)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px',
                   boxShadow: 'inset 0 0 10px rgba(130, 179, 66, 0.2)'
                 }}>
@@ -206,17 +206,17 @@ export function ReportView({ onOpenLegal }) {
               onClick={downloadPDF}
               className="pill-button"
               style={{
-                padding: '12px 24px', 
-                color: '#ffffff', 
+                padding: '12px 24px',
+                color: '#ffffff',
                 fontSize: '13px',
-                fontWeight: 700, 
-                cursor: 'pointer', 
+                fontWeight: 700,
+                cursor: 'pointer',
                 display: 'flex',
-                alignItems: 'center', 
-                gap: '8px', 
+                alignItems: 'center',
+                gap: '8px',
                 background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)', // Deep premium slate
                 boxShadow: '0 8px 20px -5px rgba(15,23,42,0.3), inset 0 1px 1px rgba(255,255,255,0.1)',
-                border: 'none', 
+                border: 'none',
                 margin: 0,
                 borderRadius: '999px',
                 transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
@@ -235,14 +235,14 @@ export function ReportView({ onOpenLegal }) {
           </div>
 
           <div id="report-content" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            
+
             {/* Top Row: Core Metrics securely locked on exactly three columns */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
-              
+
               {/* Score Card */}
               <div className="glass-panel" style={{ padding: '16px', background: 'rgba(255,255,255,0.6)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                 <h3 style={{ fontSize: '12px', color: '#334155', fontWeight: 800, marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Score Card</h3>
-                
+
                 <div style={{ textAlign: 'center', padding: '12px 0', borderBottom: '1px solid rgba(0,0,0,0.08)', marginBottom: '12px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                   <div style={{ fontSize: '48px', fontWeight: 900, color: (report?.score || 0) >= 80 ? 'var(--accent)' : '#ef4444', textShadow: `0 8px 24px ${(report?.score || 0) >= 80 ? 'rgba(130, 179, 66, 0.4)' : 'rgba(239, 68, 68, 0.4)'}`, lineHeight: 1 }}>
                     {report?.score || 0}<span style={{ fontSize: '18px', opacity: 0.5 }}>%</span>
@@ -284,7 +284,7 @@ export function ReportView({ onOpenLegal }) {
                   <h4 style={{ fontSize: '11px', color: '#4a7c1f', margin: 0, textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 800 }}>AI Calibration</h4>
                   <span style={{ fontSize: '8px', color: '#475569', fontWeight: 700, background: 'rgba(0,0,0,0.05)', padding: '2px 6px', borderRadius: '4px' }}>HIGH CONFIDENCE</span>
                 </div>
-                
+
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                   <div style={{ height: '8px', background: 'rgba(0,0,0,0.05)', borderRadius: '4px', overflow: 'hidden', marginBottom: '8px' }}>
                     <div style={{ width: `${report?.score || 0}%`, height: '100%', background: 'linear-gradient(90deg, #618264 0%, #82b342 100%)' }} />
@@ -319,7 +319,7 @@ export function ReportView({ onOpenLegal }) {
           </div>
         </div>
       </div>
-      
+
       <LandingFooter onOpenLegal={onOpenLegal} />
     </div>
   );

@@ -8,46 +8,46 @@ This is the **Master Technical Blueprint**. It is built using **Mermaid Text Arc
 flowchart TD
     %% Node Definitions
     UserInput["User Input: Role/Company/Mode"]
-    AppJSX["React Frontend (Nginx/Docker)"]
-    ServerPY["server.py (FastAPI/Docker)"]
-    AgentPY["agent.py (LiveKit Worker/Docker)"]
-    PromptsPY["prompts.py (Zero-Shot Dynamic Rubric)"]
+    AppJSX["App.jsx (React Frontend)"]
+    ServerPY["server.py (FastAPI Gateway)"]
+    AgentPY["agent.py (Monica Brain)"]
+    PromptsPY["prompts.py (Intelligence Layer)"]
     LKCloud[("LiveKit Cloud Room")]
-    TavusCloud[("Tavus 3D Avatar Engine")]
     
     %% Brain Components (Sub-processes)
     subgraph MonicaBrain [The Monica Intelligence Loop]
         direction TB
-        Blueprint["GPT-4o (Dynamic Job Blueprint)"]
         VAD["Silero VAD (Voice Detection)"]
-        STT["OpenAI STT (Hearing)"]
+        STT["Whisper STT (Hearing)"]
         LLM["GPT-4o (Reasoning)"]
-        TTS["ElevenLabs (Speaking)"]
+        TTS["ElevenLabs/OpenAI (Speaking)"]
+        Anim["Animation Engine (12 FPS)"]
     end
 
     %% Connection Logic (Arrows & Labels)
     UserInput -- "1. Enter Intent" --> AppJSX
-    AppJSX -- "2. GET /token" --> ServerPY
-    ServerPY -- "3. Serialize Metadata" --> ServerPY
+    AppJSX -- "2. GET /token?role=...&metadata=..." --> ServerPY
+    ServerPY -- "3. Serialize JSON Metadata" --> ServerPY
     ServerPY -- "4. Signed JWT Token" --> AppJSX
     AppJSX -- "5. Join Room" --> LKCloud
     AgentPY -- "6. Listen for Participant" --> LKCloud
     
     %% The Secret Sauce (Metadata Pipe)
     LKCloud -- "7. User Data Signal" --> AgentPY
-    AgentPY -- "8. Read JSON Metadata" --> Blueprint
-    Blueprint -- "9. Generate Strict Rubric" --> PromptsPY
-    PromptsPY -- "10. Inject System Prompt" --> AgentPY
+    AgentPY -- "8. Read JSON Metadata" --> AgentPY
+    AgentPY -- "9. Inject Field Context" --> PromptsPY
+    PromptsPY -- "10. Mode-Specific Prompt" --> AgentPY
     
     %% The Intercommunication Loop
     AgentPY <==> LKCloud
-    AgentPY -- "Mount Avatar" --> TavusCloud
-    TavusCloud -- "Stream Visuals" --> LKCloud
     LKCloud -- "Audio Signal" --> VAD
     VAD -- "Speech Start" --> STT
     STT -- "Transcript" --> LLM
     LLM -- "Executive Response" --> TTS
-    TTS -- "Audio Stream" --> TavusCloud
+    TTS -- "Audio Stream" --> AgentPY
+    AgentPY -- "Sync Frame Flip" --> Anim
+    Anim -- "12 FPS Video Stream" --> LKCloud
+    LKCloud -- "Visual Output" --> AppJSX
 ```
 
 ---
@@ -89,4 +89,4 @@ This map is written in **Mermaid syntax**. As you improve the project, you can e
 | **Universal Mode** | ✅ PASS | Monica now adapts to **any industry** (Nursing, Law, CEO, RA) instantly. |
 
 ---
-*Created by **Darrshs**
+*Created by **Stephen Agyemang**
