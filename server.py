@@ -19,6 +19,7 @@ app = FastAPI()
 
 # Allow the React frontend to communicate with this token server
 ALLOWED_ORIGINS = [
+    "http://localhost",      # Docker Nginx Frontend
     "http://localhost:5173", # Default Vite Port
     "http://localhost:5174", # Fallback Vite Port (Active)
     "http://127.0.0.1:5173",
@@ -50,13 +51,19 @@ async def rate_limit_middleware(request: Request, call_next):
     if client_ip not in RATE_LIMIT_STORE:
         RATE_LIMIT_STORE[client_ip] = []
         
-    # Remove old requests
     RATE_LIMIT_STORE[client_ip] = [t for t in RATE_LIMIT_STORE[client_ip] if now - t < 60]
     
     if len(RATE_LIMIT_STORE[client_ip]) >= MAX_REQUESTS_PER_MINUTE:
         return JSONResponse(status_code=429, content={"detail": "Rate limit exceeded. Try again later."})
         
     RATE_LIMIT_STORE[client_ip].append(now)
+    
+    # Prune old IPs to prevent memory leak
+    if len(RATE_LIMIT_STORE) > 1000:
+        keys_to_delete = [ip for ip, times in RATE_LIMIT_STORE.items() if not times or now - times[-1] > 60]
+        for k in keys_to_delete:
+            RATE_LIMIT_STORE.pop(k, None)
+            
     response = await call_next(request)
     return response
 
@@ -71,7 +78,7 @@ async def get_token(room: str = None, role: str = "Candidate", metadata: str = N
 
     # Generate a unique room name per session to avoid stale room conflicts
     if not room:
-        room = f"interview-{uuid4().hex[:8]}"
+        room = f"interview-{uuid4().hex}" # Full 32-char UUID for cryptographic entropy
         
     company_name = ""
     interview_mode = "general"
@@ -104,7 +111,7 @@ async def get_token(room: str = None, role: str = "Candidate", metadata: str = N
             can_publish_data=True
         ))
 
-    return {"token": token.to_jwt(), "url": LIVEKIT_URL}
+    return {"token": token.to_jwt(), "url": LIVEKIT_URL, "room_name": room}
 
 @app.get("/recruiter-token")
 async def get_recruiter_token(room: str):
@@ -130,9 +137,14 @@ async def get_recruiter_token(room: str):
 
     return {"token": token.to_jwt(), "url": LIVEKIT_URL}
 
+ADMIN_SECRET = os.getenv("ADMIN_SECRET")
+
 @app.get("/report/{room_name}")
-async def get_report(room_name: str):
+async def get_report(room_name: str, secret: str = None):
     """Retrieves the full interview session data for generating a PDF report."""
+    if ADMIN_SECRET and secret != ADMIN_SECRET:
+        raise HTTPException(status_code=401, detail="Unauthorized access to reports.")
+        
     try:
         row = database.get_session_data(room_name)
         
@@ -230,11 +242,11 @@ async def post_support_request(request: Request):
         else:
             logger.warning("Formspree Relay Skipped: FORMSPREE_URL not set in .env")
 
-        return {"status": "success", "message": "Executive Support Request Received."}
+        return {"status": "success", "message": "Support Request Received."}
 
     except Exception as e:
         logger.error(f"Failed to process support request: {e}")
-        raise HTTPException(status_code=500, detail="Executive Support Engine Encountered an Error.")
+        raise HTTPException(status_code=500, detail="Support Engine Encountered an Error.")
 
 if __name__ == "__main__":
     import uvicorn

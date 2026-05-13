@@ -52,7 +52,7 @@ export function useEmotionTracker(localTrack) {
                     });
                 }
             }
-            animationRef.current = setTimeout(detectEmotions, 1000); // Throttle to 1 CPU frame per second
+            animationRef.current = setTimeout(detectEmotions, 200); // 5 FPS for better responsiveness
         };
 
         const startDetection = () => {

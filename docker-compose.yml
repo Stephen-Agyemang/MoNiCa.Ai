@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  # The React Vite UI running on a lightning-fast Nginx web server
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # Vite needs the Clerk key at build time to embed it into the static HTML/JS files
+        VITE_CLERK_PUBLISHABLE_KEY: ${VITE_CLERK_PUBLISHABLE_KEY}
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+  # The FastAPI server handling database operations and LiveKit tokens
+  backend:
+    build:
+      context: .
+      dockerfile: backend.Dockerfile
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+
+  # The Python Worker executing the Monica AI Engine (LiveKit)
+  agent:
+    build:
+      context: .
+      dockerfile: agent.Dockerfile
+    env_file:
+      - .env
+    depends_on:
+      - backend

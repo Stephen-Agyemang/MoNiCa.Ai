@@ -12,3 +12,9 @@ dist/
 venv/
 env/
 ENV/
+
+# Internal developer blueprint — never commit
+blueprint/
+
+# Implementation plan
+frontend_implementation.md

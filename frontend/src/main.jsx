@@ -23,6 +23,9 @@ const clerkAppearance = {
     borderRadius: '16px',
   },
   elements: {
+    dividerRow: { 
+      display: 'none !important', // THIS IS WHAT KILLS THE "or" TEXT
+    },
     rootBox: {
       background: 'transparent !important',
     },
@@ -37,17 +40,17 @@ const clerkAppearance = {
       display: 'none !important',
     },
     card: {
-      background: 'rgba(255, 255, 255, 0.3) !important', // Vibrant White Frosted Glass
+      background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.45) 0%, rgba(255, 255, 255, 0.15) 100%) !important', // Beautiful subtle diagonal light wash
       backdropFilter: 'blur(40px) !important',
-      WebkitBackdropFilter: 'blur(40px) !important', 
+      WebkitBackdropFilter: 'blur(40px) !important',
       border: '1px solid rgba(255, 255, 255, 0.2) !important', // High-Contrast Tech Border
       boxShadow: `
         0 40px 100px -20px rgba(0, 0, 0, 0.5),
         0 0 1px 1px rgba(255, 255, 255, 0.05) inset
       !important`,
       width: '100% !important',
-      maxWidth: '440px !important',
-      padding: '32px 24px !important',
+      maxWidth: '480px !important',
+      padding: '48px 32px !important',
       margin: '0 auto !important',
     },
     headerTitle: {
@@ -82,7 +85,7 @@ const clerkAppearance = {
       fontWeight: '600 !important',
     },
     formButtonPrimary: {
-      background: '#C5E898 !important',
+      background: 'linear-gradient(135deg, #d4f2aa 0%, #C5E898 100%) !important', // Lush dimensional green glow
       color: '#05070a !important', // High Contrast Ink
       fontSize: '15px !important',
       fontWeight: '700 !important',
@@ -91,7 +94,7 @@ const clerkAppearance = {
       textTransform: 'none !important',
       transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important',
       '&:hover': {
-        background: '#d4f2aa !important',
+        background: 'linear-gradient(135deg, #e2f8c0 0%, #d4f2aa 100%) !important', // Brighter hover gradient
         transform: 'translateY(-2px) !important',
         boxShadow: '0 10px 25px rgba(197, 232, 152, 0.25) !important',
       },
@@ -125,22 +128,19 @@ const clerkAppearance = {
         color: '#33691e !important',
       }
     },
-    'button[tabindex="-1"]': { 
+    'button[tabindex="-1"]': {
       display: 'none !important',
     },
     '[class^="cl-internal"]': {
       display: 'none !important',
     },
-    footerActionText: {
-      color: 'rgba(0, 0, 0, 0.6) !important',
-    }
   }
 };
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <ClerkProvider 
-      publishableKey={PUBLISHABLE_KEY} 
+    <ClerkProvider
+      publishableKey={PUBLISHABLE_KEY}
       appearance={clerkAppearance}
       fallbackRedirectUrl="/"
       signUpFallbackRedirectUrl="/"
