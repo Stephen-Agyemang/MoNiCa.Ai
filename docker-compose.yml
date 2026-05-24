@@ -8,6 +8,7 @@ services:
       args:
         # Vite needs the Clerk key at build time to embed it into the static HTML/JS files
         VITE_CLERK_PUBLISHABLE_KEY: ${VITE_CLERK_PUBLISHABLE_KEY}
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api}
     ports:
       - "80:80"
     depends_on:

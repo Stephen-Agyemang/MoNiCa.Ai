@@ -409,12 +409,12 @@ html {
 
 /* Monica Presence Card */
 .monica-presence-card {
-  position: absolute;
+  position: fixed !important;
   bottom: 40px;
   left: 40px;
-  background: rgba(255, 255, 255, 0.6);
-  backdrop-filter: blur(24px);
-  border: 1px solid rgba(255, 255, 255, 0.8);
+  background: rgba(18, 22, 26, 0.6) !important;
+  backdrop-filter: blur(24px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
   border-radius: 16px;
   padding: 12px 18px;
   display: flex;
@@ -659,12 +659,16 @@ html {
 }
 
 .settings-card {
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(24px);
-  border: 1px solid rgba(255, 255, 255, 0.6);
+  background: rgba(18, 22, 26, 0.5) !important;
+  backdrop-filter: blur(32px) saturate(200%) !important;
+  -webkit-backdrop-filter: blur(32px) saturate(200%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
   border-radius: 20px;
   padding: 24px 28px;
-  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.05);
+  box-shadow: 
+    0 25px 50px -12px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+  color: var(--text-body);
 }
 
 .safety-badge-tiny {

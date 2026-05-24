@@ -19,33 +19,54 @@ export default function MonicaAvatar({ audioTrack }) {
     const animFrameRef = useRef(null);
 
     useEffect(() => {
+        console.log('MonicaAvatar: useEffect triggered with audioTrack:', audioTrack);
         if (!audioTrack) {
+            console.log('MonicaAvatar: No audioTrack provided.');
             analyserRef.current = null;
             dataArrayRef.current = null;
-            setIsSpeaking(false);
-            setSyllable(false);
-            setVolume(0);
             return;
         }
+        
+        console.log('MonicaAvatar: audioTrack details:', {
+            id: audioTrack.id,
+            kind: audioTrack.kind,
+            label: audioTrack.label,
+            enabled: audioTrack.enabled,
+            readyState: audioTrack.readyState
+        });
+
         try {
             const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            console.log('MonicaAvatar: Created AudioContext, initial state:', audioCtx.state);
+            
             const stream = new MediaStream([audioTrack]);
             const source = audioCtx.createMediaStreamSource(stream);
             const analyser = audioCtx.createAnalyser();
             analyser.fftSize = 256;
-            analyser.smoothingTimeConstant = 0.4; // lower smoothing for faster syllable reaction
+            analyser.smoothingTimeConstant = 0.3; // Lower smoothing for ultra-fast syllable reaction
             source.connect(analyser);
 
             const dataArray = new Uint8Array(analyser.frequencyBinCount);
             analyserRef.current = analyser;
             dataArrayRef.current = dataArray;
 
+            let lastState = '';
+            let wasSpeaking = false;
+
             const checkVolume = () => {
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume().catch(err => console.warn('MonicaAvatar: Could not resume AudioContext', err));
+                }
+                
+                if (audioCtx.state !== lastState) {
+                    console.log('MonicaAvatar: AudioContext state is now:', audioCtx.state);
+                    lastState = audioCtx.state;
+                }
+
                 if (!analyserRef.current || !dataArrayRef.current) return;
                 analyserRef.current.getByteFrequencyData(dataArrayRef.current);
                 const arr = dataArrayRef.current;
-                // We want to detect syllables, which often have higher frequency energy (consonants)
-                // rather than just the booming bass of a voice.
+                
                 let sumLow = 0;
                 let sumHigh = 0;
 
@@ -56,31 +77,45 @@ export default function MonicaAvatar({ audioTrack }) {
 
                 const volLow = sumLow / 13 / 255;
                 const volHigh = sumHigh / 25 / 255;
-                const totalVol = (volLow * 0.7) + (volHigh * 0.3);
+                const totalVol = (volLow * 0.75) + (volHigh * 0.25);
 
                 // isSpeaking: true if talking generally (holds the body pose)
-                setIsSpeaking(totalVol > 0.03);
+                const currentSpeaking = totalVol > 0.015; // More sensitive body posturing
 
                 // syllable: true on sharp audio peaks or high-frequency consonants (flaps the mouth open)
-                // We use a lower threshold for High to make the mouth flutter more realistically on soft sounds
-                setSyllable(totalVol > 0.06 || volHigh > 0.04);
+                const currentSyllable = totalVol > 0.035 || volHigh > 0.025; 
 
-                setVolume(Math.min(totalVol * 2.5, 1));
+                setIsSpeaking(currentSpeaking);
+                setSyllable(currentSyllable);
+                setVolume(Math.min(totalVol * 3.5, 1)); // Increased gain multiplier for high-contrast waveforms
+
+                if (currentSpeaking && !wasSpeaking) {
+                    console.log('MonicaAvatar: Speaking activity detected! Volume:', totalVol.toFixed(4), 'HighFreq:', volHigh.toFixed(4));
+                    wasSpeaking = true;
+                } else if (!currentSpeaking && wasSpeaking) {
+                    wasSpeaking = false;
+                }
+
                 animFrameRef.current = requestAnimationFrame(checkVolume);
             };
             animFrameRef.current = requestAnimationFrame(checkVolume);
 
             return () => {
+                console.log('MonicaAvatar: Cleaning up audio analysis context.');
                 if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
                 source.disconnect();
-                audioCtx.close();
+                audioCtx.close().catch(err => console.warn('MonicaAvatar: Error closing AudioContext', err));
                 analyserRef.current = null;
                 dataArrayRef.current = null;
             };
         } catch (e) {
-            console.warn('MonicaAvatar: Could not set up audio analysis', e);
+            console.error('MonicaAvatar: Could not set up audio analysis', e);
         }
     }, [audioTrack]);
+
+    const displayIsSpeaking = audioTrack ? isSpeaking : false;
+    const displaySyllable = audioTrack ? syllable : false;
+    const displayVolume = audioTrack ? volume : 0;
 
     return (
         <div
@@ -102,8 +137,8 @@ export default function MonicaAvatar({ audioTrack }) {
             <div style={{
                 position: 'absolute',
                 inset: 0,
-                background: isSpeaking
-                    ? `radial-gradient(ellipse at center 40%, rgba(197,232,152,${0.1 + volume * 0.15}) 0%, transparent 60%)`
+                background: displayIsSpeaking
+                    ? `radial-gradient(ellipse at center 40%, rgba(197,232,152,${0.1 + displayVolume * 0.15}) 0%, transparent 60%)`
                     : 'none',
                 transition: 'all 0.3s ease',
                 pointerEvents: 'none',
@@ -163,7 +198,7 @@ export default function MonicaAvatar({ audioTrack }) {
                             position: 'absolute',
                             top: 0,
                             left: 0,
-                            opacity: isSpeaking ? 1 : 0,
+                            opacity: displayIsSpeaking ? 1 : 0,
                             transition: 'opacity 0.25s ease-in-out',
                         }}
                         draggable={false}
@@ -188,7 +223,7 @@ export default function MonicaAvatar({ audioTrack }) {
                             position: 'absolute',
                             top: 0,
                             left: 0,
-                            opacity: (isSpeaking && syllable) ? 0 : 1,
+                            opacity: (displayIsSpeaking && displaySyllable) ? 0 : 1,
                             transition: 'opacity 0.05s linear', // Sharp cut for lip sync
                             maskImage: 'radial-gradient(ellipse 18% 14% at 50% 36%, black 30%, transparent 100%)',
                             WebkitMaskImage: 'radial-gradient(ellipse 18% 14% at 50% 36%, black 30%, transparent 100%)',
@@ -210,7 +245,7 @@ export default function MonicaAvatar({ audioTrack }) {
                     alignItems: 'center',
                     gap: '3px',
                     zIndex: 2,
-                    opacity: isSpeaking ? 1 : 0.3,
+                    opacity: displayIsSpeaking ? 1 : 0.3,
                     transition: 'opacity 0.3s ease',
                 }}
             >
@@ -220,8 +255,8 @@ export default function MonicaAvatar({ audioTrack }) {
                         style={{
                             width: '3px',
                             borderRadius: '2px',
-                            background: isSpeaking ? '#C5E898' : '#ccc',
-                            height: isSpeaking ? `${6 + volume * 14 * (1 - Math.abs(i - 2) * 0.25)}px` : '4px',
+                            background: displayIsSpeaking ? '#C5E898' : '#ccc',
+                            height: displayIsSpeaking ? `${6 + displayVolume * 14 * (1 - Math.abs(i - 2) * 0.25)}px` : '4px',
                             transition: 'height 0.1s ease, background 0.3s ease',
                         }}
                     />

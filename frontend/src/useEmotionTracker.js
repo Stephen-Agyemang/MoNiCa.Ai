@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import * as faceapi from '@vladmandic/face-api';
 
 export function useEmotionTracker(localTrack) {
@@ -34,11 +34,12 @@ export function useEmotionTracker(localTrack) {
 
     useEffect(() => {
         if (!isLoaded || !videoRef.current) return;
+        const videoElement = videoRef.current;
 
         const detectEmotions = async () => {
-            if (videoRef.current && videoRef.current.readyState >= 2) {
+            if (videoElement.readyState >= 2) {
                 const detections = await faceapi.detectSingleFace(
-                    videoRef.current,
+                    videoElement,
                     new faceapi.TinyFaceDetectorOptions({ inputSize: 160 }) // Smallest input for speed
                 ).withFaceExpressions();
 
@@ -59,17 +60,17 @@ export function useEmotionTracker(localTrack) {
             if (!animationRef.current) detectEmotions();
         };
 
-        videoRef.current.addEventListener('play', startDetection);
-        if (!videoRef.current.paused) startDetection();
+        videoElement.addEventListener('play', startDetection);
+        if (!videoElement.paused) startDetection();
 
         return () => {
             clearTimeout(animationRef.current);
             animationRef.current = null;
-            if (videoRef.current) videoRef.current.removeEventListener('play', startDetection);
+            videoElement.removeEventListener('play', startDetection);
         };
     }, [isLoaded]);
 
-    const getEmotionSummary = () => {
+    const getEmotionSummary = useCallback(() => {
         if (emotions.length === 0) return "No data";
 
         const counts = emotions.reduce((acc, curr) => {
@@ -82,7 +83,7 @@ export function useEmotionTracker(localTrack) {
         return sorted
             .map(([emotion, count]) => `${emotion}: ${Math.round((count / total) * 100)}%`)
             .join(', ');
-    };
+    }, [emotions]);
 
     return { isLoaded, emotions, getEmotionSummary, videoRef };
 }

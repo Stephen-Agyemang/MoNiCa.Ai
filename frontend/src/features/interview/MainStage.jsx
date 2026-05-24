@@ -15,62 +15,213 @@ import { useEmotionTracker } from '../../useEmotionTracker';
 /* ───────────────────────────────────────────
    Induction Loading Overlay
    ─────────────────────────────────────────── */
-function InductionOverlay() {
+function InductionOverlay({ show, fadeOut }) {
+  if (!show) return null;
+  
+  const styleSheet = `
+    @keyframes radar-sweep {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    @keyframes radar-node-pulse {
+      0%, 100% { opacity: 0.3; transform: scale(0.8); }
+      50% { opacity: 1; transform: scale(1.3); }
+    }
+    @keyframes core-pulse {
+      0%, 100% { transform: scale(1); box-shadow: 0 0 30px rgba(130, 179, 66, 0.4), inset 0 0 15px rgba(130, 179, 66, 0.2); }
+      50% { transform: scale(1.03); box-shadow: 0 0 50px rgba(130, 179, 66, 0.6), inset 0 0 25px rgba(130, 179, 66, 0.3); }
+    }
+    @keyframes biometric-glow {
+      0%, 100% { opacity: 0.4; }
+      50% { opacity: 0.7; }
+    }
+  `;
+
   return (
     <div style={{
       position: 'fixed',
       inset: 0,
       zIndex: 9999,
-      background: 'var(--bg-primary)',
+      background: 'radial-gradient(circle at 50% 50%, #0c0f14 0%, #05070a 100%)',
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
-      gap: '32px'
+      gap: '40px',
+      opacity: fadeOut ? 0 : 1,
+      transition: 'opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
+      pointerEvents: fadeOut ? 'none' : 'auto',
     }}>
-      <div className="auth-mesh-overlay" style={{ opacity: 0.5 }} />
-      <div className="mesh-glow-sphere sphere-1" style={{ width: '400px', height: '400px' }} />
+      <style dangerouslySetInnerHTML={{ __html: styleSheet }} />
+      <div className="auth-mesh-overlay" style={{ opacity: 0.3 }} />
+      <div className="mesh-glow-sphere sphere-1" style={{ width: '500px', height: '500px', background: '#4a7c1f', filter: 'blur(150px)', opacity: 0.4 }} />
 
-      <div style={{ position: 'relative' }}>
-        <div className="avatar-placeholder" style={{ width: '120px', height: '120px', fontSize: '32px' }}>
-          M
-        </div>
-        <div className="monica-loading-shimmer" style={{
-          position: 'absolute',
-          inset: -10,
-          borderRadius: '50%',
-          border: '2px solid var(--accent)',
-          opacity: 0.3,
-          animation: 'soft-pulse 2s infinite'
-        }} />
-      </div>
-
-      <div style={{ textAlign: 'center', zIndex: 10 }}>
-        <h2 className="brand-text-gradient" style={{ fontSize: '28px', marginBottom: '8px' }}>
-          Inducting Monica<span className="brand-dot-end">.</span>
-        </h2>
-        <p style={{ color: 'rgba(0,0,0,0.4)', fontSize: '14px', textTransform: 'uppercase', letterSpacing: '0.2em' }}>
-          Synchronizing Digital Replica & Biometric Logic...
-        </p>
-      </div>
-
-      <div style={{
-        width: '200px',
-        height: '2px',
-        background: 'rgba(0,0,0,0.1)',
-        borderRadius: '2px',
-        overflow: 'hidden',
-        position: 'relative'
+      {/* Main glassmorphic container for biometric scanner */}
+      <div className="glass-panel-dark" style={{
+        padding: '48px 64px',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: '32px',
+        background: 'rgba(10, 15, 20, 0.7)',
+        border: '1px solid rgba(255, 255, 255, 0.05)',
+        boxShadow: '0 50px 100px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255,255,255,0.05)',
       }}>
+        
+        {/* HUD Center scanner with left/right tech readouts */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '48px', position: 'relative' }}>
+          
+          {/* Left readout labels */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', textAlign: 'right', minWidth: '150px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <span style={{ fontSize: '9px', color: 'rgba(255,255,255,0.3)', letterSpacing: '0.1em', fontFamily: 'monospace' }}>SECURE PROTOCOL</span>
+              <span style={{ fontSize: '11px', color: '#ffffff', fontWeight: 'bold', fontFamily: 'monospace', letterSpacing: '0.05em' }}>M_LINK_SYNC: SECURE</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <span style={{ fontSize: '9px', color: 'rgba(255,255,255,0.3)', letterSpacing: '0.1em', fontFamily: 'monospace' }}>NEURAL SYNAPSE</span>
+              <span style={{ fontSize: '11px', color: 'var(--accent)', fontWeight: 'bold', fontFamily: 'monospace', letterSpacing: '0.05em' }}>GRID_CORE_98.7%</span>
+            </div>
+          </div>
+
+          {/* SVG Radar center */}
+          <div style={{ position: 'relative', width: '220px', height: '220px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            
+            {/* Pulsing scanner circle layers */}
+            <div style={{
+              position: 'absolute',
+              inset: 0,
+              borderRadius: '50%',
+              border: '1px solid rgba(130, 179, 66, 0.1)',
+              animation: 'biometric-glow 3s infinite ease-in-out',
+            }} />
+            <div style={{
+              position: 'absolute',
+              inset: 20,
+              borderRadius: '50%',
+              border: '1px dashed rgba(130, 179, 66, 0.15)',
+            }} />
+
+            {/* Radar scan path */}
+            <svg style={{ position: 'absolute', width: '100%', height: '100%', transform: 'rotate(-90deg)', pointerEvents: 'none' }} viewBox="0 0 200 200">
+              {/* Concentric helper grids */}
+              <circle cx="100" cy="100" r="90" fill="none" stroke="var(--accent)" strokeWidth="0.5" strokeOpacity="0.15" />
+              <circle cx="100" cy="100" r="70" fill="none" stroke="var(--accent)" strokeWidth="0.5" strokeOpacity="0.25" strokeDasharray="3, 3" />
+              <circle cx="100" cy="100" r="50" fill="none" stroke="var(--accent)" strokeWidth="0.75" strokeOpacity="0.3" />
+              
+              {/* Radar sweep lines */}
+              <line x1="100" y1="100" x2="190" y2="100" stroke="var(--accent)" strokeWidth="1.5" strokeOpacity="0.6" style={{
+                transformOrigin: '100px 100px',
+                animation: 'radar-sweep 3s linear infinite',
+              }} />
+              
+              {/* Blip nodes representing dynamic points */}
+              <circle cx="150" cy="130" r="3" fill="var(--accent)" style={{ animation: 'radar-node-pulse 2s infinite ease-in-out' }} />
+              <circle cx="60" cy="80" r="2" fill="var(--accent)" stroke="var(--accent)" strokeWidth="1" strokeOpacity="0.5" style={{ animation: 'radar-node-pulse 2.5s infinite ease-in-out' }} />
+            </svg>
+
+            {/* Center glowing core representing Monica */}
+            <div style={{
+              width: '100px',
+              height: '100px',
+              borderRadius: '50%',
+              background: 'rgba(5, 7, 10, 0.95)',
+              border: '2px solid var(--accent)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 2,
+              fontSize: '32px',
+              fontWeight: '900',
+              color: '#ffffff',
+              fontFamily: "'Outfit', 'Inter', sans-serif",
+              textShadow: '0 0 15px rgba(255, 255, 255, 0.6)',
+              animation: 'core-pulse 2s infinite ease-in-out',
+            }}>
+              M
+            </div>
+          </div>
+
+          {/* Right readout labels */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', textAlign: 'left', minWidth: '150px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <span style={{ fontSize: '9px', color: 'rgba(255,255,255,0.3)', letterSpacing: '0.1em', fontFamily: 'monospace' }}>BIOMETRIC SCAN</span>
+              <span style={{ fontSize: '11px', color: 'var(--accent)', fontWeight: 'bold', fontFamily: 'monospace', letterSpacing: '0.05em' }}>BIOMETRIC_SYNC: LIVE</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <span style={{ fontSize: '9px', color: 'rgba(255,255,255,0.3)', letterSpacing: '0.1em', fontFamily: 'monospace' }}>AUDIO SYNTHESIS</span>
+              <span style={{ fontSize: '11px', color: '#ffffff', fontWeight: 'bold', fontFamily: 'monospace', letterSpacing: '0.05em' }}>BAND_DET_ACTIVE</span>
+            </div>
+          </div>
+          
+        </div>
+
+        {/* Text indicators */}
+        <div style={{ textAlign: 'center', zIndex: 10 }}>
+          <h2 className="brand-text-gradient" style={{ fontSize: '28px', marginBottom: '8px', letterSpacing: '-0.02em' }}>
+            Inducting Monica<span className="brand-dot-end">.</span>
+          </h2>
+          <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.25em' }}>
+            Synchronizing Digital Replica & Biometric Logic
+          </p>
+        </div>
+
+        {/* Premium linear micro-progress */}
         <div style={{
-          position: 'absolute',
-          height: '100%',
-          width: '60%',
-          background: 'var(--accent)',
-          animation: 'shimmer 2s infinite linear'
-        }} />
+          width: '280px',
+          height: '2px',
+          background: 'rgba(255,255,255,0.05)',
+          borderRadius: '2px',
+          overflow: 'hidden',
+          position: 'relative'
+        }}>
+          <div style={{
+            position: 'absolute',
+            height: '100%',
+            width: '40%',
+            background: 'linear-gradient(90deg, transparent, var(--accent), transparent)',
+            animation: 'shimmer 1.8s infinite linear'
+          }} />
+        </div>
       </div>
     </div>
+  );
+}
+
+/* ───────────────────────────────────────────
+   Tavus 3D Unified Perfect Sync Player
+   ─────────────────────────────────────────── */
+function TavusPlayer({ videoTrack, audioTrack }) {
+  const videoRef = useRef(null);
+  const videoStreamTrack = videoTrack?.track?.mediaStreamTrack || videoTrack?.publication?.track?.mediaStreamTrack || videoTrack?.mediaStreamTrack;
+  const audioStreamTrack = audioTrack?.track?.mediaStreamTrack || audioTrack?.publication?.track?.mediaStreamTrack || audioTrack?.mediaStreamTrack;
+
+  useEffect(() => {
+    if (!videoRef.current) return;
+    const tracksToStream = [];
+    if (videoStreamTrack) tracksToStream.push(videoStreamTrack);
+    if (audioStreamTrack) tracksToStream.push(audioStreamTrack);
+    
+    if (tracksToStream.length > 0) {
+      // Create a unified browser MediaStream with both A/V tracks to trigger hardware clock WebRTC sync
+      videoRef.current.srcObject = new MediaStream(tracksToStream);
+      videoRef.current.play().catch(err => console.warn('TavusPlayer play error:', err));
+    } else {
+      videoRef.current.srcObject = null;
+    }
+  }, [videoStreamTrack, audioStreamTrack]);
+
+  return (
+    <video
+      ref={videoRef}
+      autoPlay
+      playsInline
+      style={{
+        width: '100%',
+        height: '100%',
+        objectFit: 'cover',
+        borderRadius: 'inherit'
+      }}
+    />
   );
 }
 
@@ -87,7 +238,9 @@ function MainStage({ role, company, mode }) {
   const [submitFeedback, setSubmitFeedback] = useState('');
   const [liveGrade, setLiveGrade] = useState(null);
   const [isTyping, setIsTyping] = useState(false);
-  const [isAgentConnected, setIsAgentConnected] = useState(false);
+  const [overlayTimedOut, setOverlayTimedOut] = useState(false);
+  const [showOverlay, setShowOverlay] = useState(true);
+  const [isOverlayFadingOut, setIsOverlayFadingOut] = useState(false);
   const textareaRef = useRef(null);
 
   // Subscribe to all tracks (Camera for self-view, Video + Audio + Unknown for Agent)
@@ -103,12 +256,6 @@ function MainStage({ role, company, mode }) {
     t => t.participant?.identity === localParticipant?.identity && t.source === Track.Source.Camera
   );
 
-  // Explicitly grab the agent's remote audio track
-  const agentAudioTrack = tracks.find(
-    t => !t.participant?.isLocal &&
-      t.publication?.kind === 'audio'
-  );
-
   // Grab the Tavus avatar's remote video track.
   // Tavus always uses identity 'tavus-avatar-agent'; also support name variants.
   const agentVideoTrack = tracks.find(
@@ -121,18 +268,50 @@ function MainStage({ role, company, mode }) {
       t.publication?.kind === 'video'
   );
 
-  const { isLoaded, getEmotionSummary, videoRef, emotions } = useEmotionTracker(localTrack);
+  // Explicitly grab the agent's remote audio track checking multiple formats.
+  // If Tavus is active, we MUST pair the video track with the audio track published by
+  // the exact same Tavus participant ('tavus-avatar-agent') to achieve perfect hardware clock sync!
+  const agentAudioTrack = (agentVideoTrack && tracks.find(
+    t => t.participant?.identity === agentVideoTrack.participant?.identity &&
+      (
+        t.publication?.kind === 'audio' ||
+        t.source === Track.Source.Microphone ||
+        t.track?.kind === 'audio'
+      )
+  )) || tracks.find(
+    t => !t.participant?.isLocal &&
+      (
+        t.publication?.kind === 'audio' ||
+        t.source === Track.Source.Microphone ||
+        t.track?.kind === 'audio'
+      )
+  );
 
-  // Track Agent Connection — trigger on audio OR video, plus a 15s timeout failsafe
+  // Robustly extract the raw WebRTC MediaStreamTrack
+  const agentAudioStreamTrack = agentAudioTrack?.track?.mediaStreamTrack ||
+                                agentAudioTrack?.publication?.track?.mediaStreamTrack ||
+                                agentAudioTrack?.mediaStreamTrack;
+
+  const { isLoaded, getEmotionSummary, videoRef, emotions } = useEmotionTracker(localTrack);
+  const isAgentConnected = overlayTimedOut || Boolean(agentVideoTrack || agentAudioTrack);
+
+  // Handle smooth InductionOverlay fade-out when agent connects
   useEffect(() => {
-    if (agentVideoTrack || agentAudioTrack) {
-      setIsAgentConnected(true);
+    if (isAgentConnected) {
+      setIsOverlayFadingOut(true);
+      const timer = setTimeout(() => {
+        setShowOverlay(false);
+      }, 1000); // 1-second elegant transition
+      return () => clearTimeout(timer);
+    } else {
+      setShowOverlay(true);
+      setIsOverlayFadingOut(false);
     }
-  }, [agentVideoTrack, agentAudioTrack]);
+  }, [isAgentConnected]);
 
   // Failsafe: always dismiss overlay after 15 seconds so session is never permanently locked
   useEffect(() => {
-    const timer = setTimeout(() => setIsAgentConnected(true), 15000);
+    const timer = setTimeout(() => setOverlayTimedOut(true), 15000);
     return () => clearTimeout(timer);
   }, []);
 
@@ -276,8 +455,11 @@ function MainStage({ role, company, mode }) {
     );
   };
 
-  // ── TECHNICAL MODE LAYOUT ──
-  if (mode === 'technical') {
+  // ── TECHNICAL MODE LAYOUT (Only for coding/technical roles) ──
+  const codingKeywords = ['software', 'developer', 'engineer', 'programmer', 'swe', 'frontend', 'backend', 'fullstack', 'full-stack', 'devops', 'data scientist', 'data engineer', 'ml engineer', 'machine learning', 'web dev', 'ios', 'android', 'mobile dev'];
+  const isCoding = codingKeywords.some(k => role.toLowerCase().includes(k));
+
+  if (mode === 'technical' && isCoding) {
     return (
       <div style={{
         flex: 1,
@@ -293,7 +475,7 @@ function MainStage({ role, company, mode }) {
         zIndex: 5,
         boxSizing: 'border-box'
       }}>
-        {!isAgentConnected && <InductionOverlay />}
+        {showOverlay && <InductionOverlay show={showOverlay} fadeOut={isOverlayFadingOut} />}
         <video ref={videoRef} autoPlay muted playsInline style={{ position: 'absolute', visibility: 'hidden', pointerEvents: 'none', width: '1px', height: '1px' }} />
         <div className="workspace-layout">
           {/* Left Column: Avatar + Self-View */}
@@ -308,23 +490,18 @@ function MainStage({ role, company, mode }) {
               height: '200px',
               borderRadius: 'var(--radius-md)',
               overflow: 'hidden',
-              boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
+              boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
               position: 'relative',
-              background: '#111827',
+              background: 'rgba(15, 20, 25, 0.45)',
+              backdropFilter: 'blur(24px)',
+              border: '1px solid rgba(130, 179, 66, 0.2)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center'
             }}>
               {/* Tavus Video Stream */}
               {agentVideoTrack ? (
-                <VideoTrack
-                  trackRef={agentVideoTrack}
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover',
-                  }}
-                />
+                <TavusPlayer videoTrack={agentVideoTrack} audioTrack={agentAudioTrack} />
               ) : (
                 <div className="avatar-placeholder">
                   <div className="monica-loading-shimmer" style={{
@@ -350,25 +527,31 @@ function MainStage({ role, company, mode }) {
               )}
               <div style={{
                 position: 'absolute',
-                bottom: '8px',
+                bottom: '12px',
                 left: '12px',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '6px',
+                background: 'rgba(15, 20, 25, 0.65)',
+                backdropFilter: 'blur(8px)',
+                border: '1px solid rgba(255,255,255,0.08)',
+                padding: '6px 12px',
+                borderRadius: '100px',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+                zIndex: 10
               }}>
                 <div className="animate-soft-pulse" style={{
                   width: '6px', height: '6px', borderRadius: '50%', background: '#ef4444',
+                  boxShadow: '0 0 6px #ef4444'
                 }} />
                 <span style={{
-                  fontSize: '9px', fontWeight: 600, color: 'rgba(0,0,0,0.7)',
+                  fontSize: '9px', fontWeight: 700, color: '#ffffff',
                   letterSpacing: '0.1em', textTransform: 'uppercase',
-                  textShadow: '0 1px 3px rgba(0,0,0,0.3)',
                 }}>Live • Monica</span>
                 {isTyping && (
                   <span className="animate-pulse" style={{
-                    fontSize: '9px', fontWeight: 700, color: '#C5E898',
+                    fontSize: '9px', fontWeight: 700, color: 'var(--accent)',
                     letterSpacing: '0.1em', textTransform: 'uppercase',
-                    textShadow: '0 1px 3px rgba(0,0,0,0.3)',
                   }}> • Taking notes... 📝</span>
                 )}
               </div>
@@ -398,14 +581,14 @@ function MainStage({ role, company, mode }) {
               margin: 0
             }}>
               <span style={{
-                fontSize: '9px', fontWeight: 700, color: 'rgba(0,0,0,0.4)',
+                fontSize: '9px', fontWeight: 700, color: 'var(--text-muted)',
                 textTransform: 'uppercase', letterSpacing: '0.15em',
               }}>Contextual Protocol</span>
               <h4 style={{
-                fontSize: '16px', fontWeight: 700, color: '#1e293b',
+                fontSize: '16px', fontWeight: 700, color: 'var(--text-heading)',
                 margin: '4px 0 2px', lineHeight: 1.3,
               }}>{role}</h4>
-              {company && <p style={{ fontSize: '12px', color: 'rgba(0,0,0,0.5)', margin: 0 }}>at {company}</p>}
+              {company && <p style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.6)', margin: 0 }}>at {company}</p>}
               <div style={{ marginTop: 'auto', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 <span style={{
                   display: 'inline-block',
@@ -614,26 +797,29 @@ function MainStage({ role, company, mode }) {
                 </div>
               ) : (
                 // ── WRITTEN ANSWER AREA (for non-coding roles) ──
-                <div className="settings-card" style={{
+                <div style={{
                   flex: 1,
                   display: 'flex',
                   flexDirection: 'column',
+                  borderRadius: 'var(--radius-md)',
                   overflow: 'hidden',
-                  padding: 0,
-                  margin: 0
+                  boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
+                  border: '1px solid var(--border-light)',
+                  background: '#1e1e2e',
                 }}>
                   <div style={{
-                    padding: '12px 20px',
+                    padding: '10px 16px',
+                    background: '#181825',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    borderBottom: '1px solid rgba(255,255,255,0.05)',
+                    borderBottom: '1px solid rgba(255,255,255,0.06)',
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <span style={{ fontSize: '14px' }}>✍️</span>
                       <label htmlFor="written-response" style={{
-                        fontSize: '11px', fontWeight: 600, color: 'rgba(0,0,0,0.4)',
-                        textTransform: 'uppercase', letterSpacing: '0.1em',
+                        fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)',
+                        textTransform: 'uppercase', letterSpacing: '0.15em',
                       }}>Direct Response</label>
                     </div>
                     <button
@@ -644,8 +830,8 @@ function MainStage({ role, company, mode }) {
                         padding: '6px 16px',
                         borderRadius: 'var(--radius-pill)',
                         border: 'none',
-                        background: code.trim() ? '#C5E898' : 'rgba(0,0,0,0.05)',
-                        color: code.trim() ? '#1a2e10' : 'rgba(255,255,255,0.4)',
+                        background: code.trim() ? '#C5E898' : 'rgba(255,255,255,0.08)',
+                        color: code.trim() ? '#1a2e10' : 'rgba(255,255,255,0.25)',
                         fontSize: '11px',
                         fontWeight: 600,
                         cursor: code.trim() ? 'pointer' : 'default',
@@ -667,7 +853,7 @@ function MainStage({ role, company, mode }) {
                       width: '100%',
                       padding: '16px 20px',
                       background: 'transparent',
-                      color: '#1e293b',
+                      color: '#ffffff',
                       border: 'none',
                       outline: 'none',
                       resize: 'none',
@@ -699,7 +885,7 @@ function MainStage({ role, company, mode }) {
             })()}
           </div>
         </div>
-        {agentAudioTrack && <AudioTrack trackRef={agentAudioTrack} />}
+        {agentAudioTrack && !agentVideoTrack && <AudioTrack trackRef={agentAudioTrack} />}
       </div>
     );
   }
@@ -707,7 +893,7 @@ function MainStage({ role, company, mode }) {
   // ── GENERAL MODE LAYOUT (Deep Ink Overhaul) ──
   return (
     <div className="auth-page-container" style={{ height: '100%', minHeight: 0, maxHeight: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-      {!isAgentConnected && <InductionOverlay />}
+      {showOverlay && <InductionOverlay show={showOverlay} fadeOut={isOverlayFadingOut} />}
       <div className="auth-mesh-overlay" style={{ opacity: 0.2 }} />
       <div className="mesh-glow-sphere sphere-1" style={{ width: '400px', height: '400px', opacity: 0.3 }} />
       <div className="mesh-glow-sphere sphere-2" style={{ width: '300px', height: '300px', opacity: 0.2 }} />
@@ -734,25 +920,15 @@ function MainStage({ role, company, mode }) {
           position: 'relative',
           borderRadius: '24px',
           overflow: 'hidden',
-          background: 'rgba(255,255,255,0.6)',
-          backdropFilter: 'blur(20px)',
-          border: '1px solid rgba(130, 179, 66, 0.2)', // Subtle Monica Green Border
+          background: 'rgba(15, 20, 25, 0.45)', // dark glassmorphic background
+          backdropFilter: 'blur(24px)',
+          border: '1px solid rgba(130, 179, 66, 0.25)', // Elegant green border
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center'
         }}>
           {agentVideoTrack ? (
-            <VideoTrack
-              trackRef={agentVideoTrack}
-              style={{
-                width: '100%',
-                height: '100%',
-                objectFit: 'cover',
-              }}
-              onSubscriptionStatusChanged={(status) => {
-                console.log('Monica Video Subscription Status:', status);
-              }}
-            />
+            <TavusPlayer videoTrack={agentVideoTrack} audioTrack={agentAudioTrack} />
           ) : (
             <div className="avatar-placeholder">
               <div className="monica-loading-shimmer" style={{
@@ -785,26 +961,32 @@ function MainStage({ role, company, mode }) {
             display: 'flex',
             alignItems: 'center',
             gap: '12px',
-            background: 'rgba(5, 7, 10, 0.6)',
+            background: 'rgba(15, 20, 25, 0.65)',
             padding: '10px 18px',
             borderRadius: '100px',
             backdropFilter: 'blur(12px)',
-            border: '1px solid rgba(255,255,255,0.12)',
+            border: '1px solid rgba(255,255,255,0.08)',
             boxShadow: '0 20px 40px rgba(0,0,0,0.4)',
             zIndex: 10
           }}>
-            <div className="monica-waveform">
-              <div className="waveform-bar"></div>
-              <div className="waveform-bar"></div>
-              <div className="waveform-bar"></div>
-              <div className="waveform-bar"></div>
-              <div className="waveform-bar"></div>
+            <div className="monica-waveform" style={{ display: 'flex', alignItems: 'flex-end', gap: '3px', height: '14px' }}>
+              <style dangerouslySetInnerHTML={{ __html: `
+                @keyframes waveform-jump {
+                  0% { height: 4px; }
+                  100% { height: 16px; }
+                }
+              `}} />
+              <div className="waveform-bar" style={{ width: '2px', background: 'var(--accent)', borderRadius: '1px', height: '4px', animation: 'waveform-jump 0.6s ease-in-out infinite alternate', animationDelay: '0.1s' }}></div>
+              <div className="waveform-bar" style={{ width: '2px', background: 'var(--accent)', borderRadius: '1px', height: '4px', animation: 'waveform-jump 0.6s ease-in-out infinite alternate', animationDelay: '0.3s' }}></div>
+              <div className="waveform-bar" style={{ width: '2px', background: 'var(--accent)', borderRadius: '1px', height: '4px', animation: 'waveform-jump 0.6s ease-in-out infinite alternate', animationDelay: '0.2s' }}></div>
+              <div className="waveform-bar" style={{ width: '2px', background: 'var(--accent)', borderRadius: '1px', height: '4px', animation: 'waveform-jump 0.6s ease-in-out infinite alternate', animationDelay: '0.4s' }}></div>
+              <div className="waveform-bar" style={{ width: '2px', background: 'var(--accent)', borderRadius: '1px', height: '4px', animation: 'waveform-jump 0.6s ease-in-out infinite alternate', animationDelay: '0.5s' }}></div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
-              <span style={{ fontSize: '11px', fontWeight: 800, color: '#1e293b', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Monica Engine</span>
+              <span style={{ fontSize: '11px', fontWeight: 800, color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.08em', textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}>Monica Engine</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                 <div style={{ width: '5px', height: '5px', borderRadius: '50%', background: 'var(--accent)', boxShadow: '0 0 8px var(--accent)' }}></div>
-                <span style={{ fontSize: '9px', color: 'rgba(0,0,0,0.6)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Biometric Sync Active</span>
+                <span style={{ fontSize: '9px', color: 'rgba(255,255,255,0.7)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Biometric Sync Active</span>
               </div>
             </div>
           </div>
@@ -844,7 +1026,7 @@ function MainStage({ role, company, mode }) {
             {renderEmotionHUD()}
           </div>
 
-          {agentAudioTrack && <AudioTrack trackRef={agentAudioTrack} />}
+          {agentAudioTrack && !agentVideoTrack && <AudioTrack trackRef={agentAudioTrack} />}
 
           {/* Interview Info Card */}
           <div className="settings-card" style={{
@@ -869,7 +1051,7 @@ function MainStage({ role, company, mode }) {
               <h3 style={{
                 fontSize: '20px',
                 fontWeight: 700,
-                color: '#1e293b',
+                color: 'var(--text-heading)',
                 margin: '8px 0 4px',
                 lineHeight: 1.3,
               }}>
@@ -878,7 +1060,7 @@ function MainStage({ role, company, mode }) {
               {company && (
                 <p style={{
                   fontSize: '14px',
-                  color: 'rgba(0,0,0,0.5)',
+                  color: 'rgba(255, 255, 255, 0.6)',
                   margin: 0,
                 }}>
                   at {company}

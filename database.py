@@ -192,7 +192,7 @@ def get_session_data(session_id: str):
     cursor = conn.cursor()
     p = _get_placeholder()
     cursor.execute(f'''
-        SELECT role, company, mode, transcript, code_submissions, score, feedback_json, created_at
+        SELECT role, company, mode, transcript, code_submissions, score, feedback_json, is_published, created_at
         FROM interview_sessions
         WHERE id = {p}
     ''', (session_id,))

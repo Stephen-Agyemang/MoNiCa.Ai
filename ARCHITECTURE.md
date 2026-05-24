@@ -1,92 +1,67 @@
-# 🗺️ Monica AI: Editable Universal System Map
+# 🗺️ MoNiCa.AI: System Architecture & Data Flow
 
-This is the **Master Technical Blueprint**. It is built using **Mermaid Text Architecture**, meaning you can **directly edit the code below** to update the map as the project grows.
+This outlines the master backend and infrastructure architecture for MoNiCa.AI. The system is deployed as a suite of microservices on Kubernetes, leveraging WebRTC for low-latency media processing.
 
-## 🤝 The Live Flowchart (Editable Boxes & Lines)
+## 🏗️ Infrastructure Map (Kubernetes)
 
 ```mermaid
 flowchart TD
-    %% Node Definitions
-    UserInput["User Input: Role/Company/Mode"]
-    AppJSX["App.jsx (React Frontend)"]
-    ServerPY["server.py (FastAPI Gateway)"]
-    AgentPY["agent.py (Monica Brain)"]
-    PromptsPY["prompts.py (Intelligence Layer)"]
-    LKCloud[("LiveKit Cloud Room")]
+    %% External Traffic
+    User[Client / Web Browser]
+    Ingress[Nginx Ingress Controller]
     
-    %% Brain Components (Sub-processes)
-    subgraph MonicaBrain [The Monica Intelligence Loop]
-        direction TB
-        VAD["Silero VAD (Voice Detection)"]
-        STT["Whisper STT (Hearing)"]
-        LLM["GPT-4o (Reasoning)"]
-        TTS["ElevenLabs/OpenAI (Speaking)"]
-        Anim["Animation Engine (12 FPS)"]
+    %% K8s Services
+    subgraph K8sCluster [Kubernetes Cluster]
+        SvcBackend[Backend Service]
+        SvcFrontend[Frontend Service]
+        
+        subgraph Pods
+            BackendPod[FastAPI Backend Pod]
+            AgentPod[LiveKit Agent Pod]
+            FrontendPod[React Client Pod]
+        end
     end
-
-    %% Connection Logic (Arrows & Labels)
-    UserInput -- "1. Enter Intent" --> AppJSX
-    AppJSX -- "2. GET /token?role=...&metadata=..." --> ServerPY
-    ServerPY -- "3. Serialize JSON Metadata" --> ServerPY
-    ServerPY -- "4. Signed JWT Token" --> AppJSX
-    AppJSX -- "5. Join Room" --> LKCloud
-    AgentPY -- "6. Listen for Participant" --> LKCloud
     
-    %% The Secret Sauce (Metadata Pipe)
-    LKCloud -- "7. User Data Signal" --> AgentPY
-    AgentPY -- "8. Read JSON Metadata" --> AgentPY
-    AgentPY -- "9. Inject Field Context" --> PromptsPY
-    PromptsPY -- "10. Mode-Specific Prompt" --> AgentPY
+    %% External APIs
+    LKCloud[("LiveKit WebRTC Cloud")]
+    DB[(Supabase / PostgreSQL)]
+    AI_APIs["AI APIs (OpenAI, Deepgram, ElevenLabs)"]
     
-    %% The Intercommunication Loop
-    AgentPY <==> LKCloud
-    LKCloud -- "Audio Signal" --> VAD
-    VAD -- "Speech Start" --> STT
-    STT -- "Transcript" --> LLM
-    LLM -- "Executive Response" --> TTS
-    TTS -- "Audio Stream" --> AgentPY
-    AgentPY -- "Sync Frame Flip" --> Anim
-    Anim -- "12 FPS Video Stream" --> LKCloud
-    LKCloud -- "Visual Output" --> AppJSX
+    %% Routing
+    User -- HTTPS --> Ingress
+    Ingress -- "/api/*" --> SvcBackend
+    Ingress -- "/*" --> SvcFrontend
+    
+    SvcBackend --> BackendPod
+    SvcFrontend --> FrontendPod
+    
+    %% Backend Logic
+    BackendPod -- "Read/Write State" --> DB
+    BackendPod -- "Sign JWT Metadata" --> FrontendPod
+    
+    %% Real-Time WebRTC Pipeline
+    FrontendPod -- "Connect via WebRTC" --> LKCloud
+    AgentPod -- "Process Audio/Video Stream" --> LKCloud
+    AgentPod -- "Orchestrate Inference" --> AI_APIs
 ```
 
----
+## ⚙️ Core Backend Components
 
-## 🛠️ How to Update This Map
-This map is written in **Mermaid syntax**. As you improve the project, you can easily add new "Boxes" and "Arrows" by editing the `ARCHITECTURE.md` file:
+### 1. FastAPI Gateway (`server.py`)
+*   **Role**: Serves as the primary REST API and session manager.
+*   **Responsibilities**:
+    *   Generates secure, cryptographically signed JWTs containing user intent, role, and interview mode.
+    *   Manages API rate limiting and health checks (`/healthz`) for Kubernetes Liveness/Readiness probes.
+    *   Stores and retrieves comprehensive interview reports from PostgreSQL.
 
-1.  **Add a Box**: `NewBox["My New Feature"]`
-2.  **Add a Line**: `OldBox -- "Does Something" --> NewBox`
-3.  **Grouping**: Use `subgraph Name ... end` to box similar components together.
+### 2. The AI Worker Agent (`agent.py` & `prompts.py`)
+*   **Role**: An asynchronous, highly concurrent worker node connected to the LiveKit WebRTC server.
+*   **Responsibilities**:
+    *   **VAD (Voice Activity Detection):** Detects user speech starts and stops locally.
+    *   **STT (Speech-to-Text):** Streams audio chunks to Deepgram for real-time transcription.
+    *   **LLM Inference:** Injects context via `prompts.py` based on JWT metadata, generating dynamic responses via OpenAI.
+    *   **TTS (Text-to-Speech) & Visuals:** Streams LLM text to ElevenLabs for natural voice synthesis, and maps output to 3D avatar visual APIs (Tavus/Simli) at 12-24 FPS.
 
----
-
-## 🏗️ Core Architecture Breakdown
-
-### 1. **The Handshake (`server.py` + `App.jsx`)**
-*   **Job**: Packages your **Role** and **Company** into a cryptographically signed JSON Web Token (JWT).
-*   **Editable Metadata**: `server.py` takes the query params and puts them in `with_metadata()`.
-
-### 2. **The Intelligence Bridge (`agent.py` + `prompts.py`)**
-*   **Job**: Reads the token metadata to decide **how hard to grill you**.
-*   **Dynamic Prompting**: If "Technical" is chosen, Monica swaps out her entire base instruction for the `TECHNICAL_INTERVIEW_PROMPT`.
-
-### 3. **The Visual Motion (`agent.py`)**
-*   **Job**: Manages the 12 FPS video stream of Monica.
-*   **Lip-Sync Logic**: Flip frames based on speech state.
-
-### 4. **The User Dashboard (`App.jsx`)**
-*   **Job**: Renders the **Monica Executive AI** viewport and handles the user's local camera.
-
----
-
-## 🛡️ Pre-Flight Bug Check Summary
-
-| Component | Status | Fix Implemented |
-| :--- | :--- | :--- |
-| **Agent Logic** | ✅ PASS | Fixed Python string search (`in role` instead of `.includes()`). |
-| **Animation Sync** | ✅ PASS | Verified event bindings for `agent_speech_started`. |
-| **Universal Mode** | ✅ PASS | Monica now adapts to **any industry** (Nursing, Law, CEO, RA) instantly. |
-
----
-*Created by **Stephen Agyemang**
+### 3. Persistence Layer (`database.py`)
+*   **Role**: State and data durability.
+*   **Responsibilities**: Uses Supabase (PostgreSQL) for cloud environments, allowing multi-pod deployment in Kubernetes to share state regarding generated reports, user sessions, and telemetry metrics.

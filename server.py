@@ -17,8 +17,8 @@ logger = logging.getLogger("monica-token-server")
 
 app = FastAPI()
 
-# Allow the React frontend to communicate with this token server
-ALLOWED_ORIGINS = [
+# Allow the React frontend to communicate with this token server.
+DEFAULT_ALLOWED_ORIGINS = [
     "http://localhost",      # Docker Nginx Frontend
     "http://localhost:5173", # Default Vite Port
     "http://localhost:5174", # Fallback Vite Port (Active)
@@ -26,6 +26,12 @@ ALLOWED_ORIGINS = [
     "http://127.0.0.1:5174",
     "https://your-frontend-domain.vercel.app" # UPDATE THIS WHEN DEPLOYED
 ]
+EXTRA_ALLOWED_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv("ALLOWED_ORIGINS", "").split(",")
+    if origin.strip()
+]
+ALLOWED_ORIGINS = DEFAULT_ALLOWED_ORIGINS + EXTRA_ALLOWED_ORIGINS
 
 app.add_middleware(
     CORSMiddleware,
@@ -45,7 +51,10 @@ MAX_REQUESTS_PER_MINUTE = 5
 
 @app.middleware("http")
 async def rate_limit_middleware(request: Request, call_next):
-    client_ip = request.client.host
+    if request.url.path == "/healthz":
+        return await call_next(request)
+
+    client_ip = getattr(request.client, "host", "unknown")
     now = time.time()
     
     if client_ip not in RATE_LIMIT_STORE:
@@ -67,11 +76,15 @@ async def rate_limit_middleware(request: Request, call_next):
     response = await call_next(request)
     return response
 
+@app.get("/healthz")
+async def healthz():
+    return {"status": "ok"}
+
 import json
 import database
 
 @app.get("/token")
-async def get_token(room: str = None, role: str = "Candidate", metadata: str = None):
+async def get_token(room: str | None = None, role: str = "Candidate", metadata: str | None = None):
     """Generates a secure LiveKit Access Token with deep metadata."""
     if not LIVEKIT_API_KEY or not LIVEKIT_API_SECRET:
         raise HTTPException(status_code=500, detail="Missing LiveKit API Keys in .env")
@@ -82,17 +95,18 @@ async def get_token(room: str = None, role: str = "Candidate", metadata: str = N
         
     company_name = ""
     interview_mode = "general"
+    m_dict = {}
     if metadata:
         try:
             m_dict = json.loads(metadata)
             company_name = m_dict.get("company", "")
             interview_mode = m_dict.get("mode", "general")
-        except:
-            pass
+        except json.JSONDecodeError:
+            logger.warning("Invalid token metadata payload. Continuing with defaults.")
 
     # Initialize the interview transcript record in SQLite
     try:
-        user_id = m_dict.get("userId") if metadata else None
+        user_id = m_dict.get("userId")
         database.create_session(room, role, company_name, interview_mode, user_id=user_id)
     except Exception as e:
         logger.error(f"Failed to create DB session: {e}")
@@ -140,7 +154,7 @@ async def get_recruiter_token(room: str):
 ADMIN_SECRET = os.getenv("ADMIN_SECRET")
 
 @app.get("/report/{room_name}")
-async def get_report(room_name: str, secret: str = None):
+async def get_report(room_name: str, secret: str | None = None):
     """Retrieves the full interview session data for generating a PDF report."""
     if ADMIN_SECRET and secret != ADMIN_SECRET:
         raise HTTPException(status_code=401, detail="Unauthorized access to reports.")
@@ -160,7 +174,8 @@ async def get_report(room_name: str, secret: str = None):
             "codeSubmissions": json.loads(row[4]) if row[4] else [],
             "score": row[5],
             "feedback": json.loads(row[6]) if row[6] else None,
-            "createdAt": row[7].isoformat() if hasattr(row[7], 'isoformat') else str(row[7])
+            "isPublished": bool(row[7]),
+            "createdAt": row[8].isoformat() if hasattr(row[8], 'isoformat') else str(row[8])
         }
     except Exception as e:
         logger.error(f"Failed to fetch report for {room_name}: {e}")

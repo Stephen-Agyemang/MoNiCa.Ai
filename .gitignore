@@ -12,6 +12,8 @@ dist/
 venv/
 env/
 ENV/
+page-2026-05-16T00-13-49-986Z.yml
+console-2026-05-16T00-13-49-252Z.log
 
 # Internal developer blueprint — never commit
 blueprint/

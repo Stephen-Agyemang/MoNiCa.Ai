@@ -57,7 +57,7 @@ export default function AppRouter() {
             <button
               onClick={() => window.location.href = '/'}
               className="settings-card"
-              style={{ padding: '8px 16px', fontSize: '12px', background: 'rgba(255,255,255,0.05)', color: '#1e293b', cursor: 'pointer', border: '1px solid rgba(255,255,255,0.1)' }}
+              style={{ padding: '8px 16px', fontSize: '12px', background: 'rgba(255,255,255,0.05)', color: '#ffffff', cursor: 'pointer', border: '1px solid rgba(255,255,255,0.1)' }}
             >
               Back to Office
             </button>

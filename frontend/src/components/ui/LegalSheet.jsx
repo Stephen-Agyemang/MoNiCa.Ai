@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { apiUrl } from '../../lib/api';
 
 export function LegalSheet({ type, onClose }) {
   const [isSending, setIsSending] = useState(false);
@@ -9,7 +10,7 @@ export function LegalSheet({ type, onClose }) {
     e.preventDefault();
     setIsSending(true);
     try {
-      const resp = await fetch("/support", {
+      const resp = await fetch(apiUrl('/support'), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ subject: formState.subject, message: formState.message })
@@ -20,7 +21,7 @@ export function LegalSheet({ type, onClose }) {
       } else {
         alert("Transmission failed. Please try again.");
       }
-    } catch (err) {
+    } catch {
       alert("Network error during transmission.");
     } finally {
       setIsSending(false);

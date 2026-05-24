@@ -3,6 +3,7 @@ import { generateReportPDF } from '../lib/pdfGenerator';
 import { ProfessionalMetricChart } from '../components/data-display/ProfessionalMetricChart';
 import { LandingFooter } from '../components/layout/LandingFooter';
 import { useAuth } from '@clerk/clerk-react';
+import { apiUrl } from '../lib/api';
 
 export function ReportView({ onOpenLegal }) {
   const { isSignedIn, isLoaded } = useAuth();
@@ -11,31 +12,36 @@ export function ReportView({ onOpenLegal }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isPublished, setIsPublished] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
+  const room = new URLSearchParams(window.location.search).get('room');
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const room = params.get('room');
     if (!room) {
-      setError("No room ID provided.");
-      setIsLoading(false);
       return;
     }
 
-    fetch(`http://localhost:8000/report/${room}`)
+    let isCancelled = false;
+
+    fetch(apiUrl(`/report/${room}`))
       .then(res => {
         if (!res.ok) throw new Error("Report not found.");
         return res.json();
       })
       .then(data => {
+        if (isCancelled) return;
         setReport(data);
         setIsPublished(!!data.isPublished);
         setIsLoading(false);
       })
       .catch(err => {
+        if (isCancelled) return;
         setError(err.message);
         setIsLoading(false);
       });
-  }, []);
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [room]);
 
   const downloadPDF = async () => {
     generateReportPDF(
@@ -44,7 +50,7 @@ export function ReportView({ onOpenLegal }) {
       {
         onStart: () => setIsLoading(true),
         onSuccess: () => setIsLoading(false),
-        onError: (err) => {
+        onError: () => {
           setError("Failed to generate PDF. Please try again or check console logic.");
           setIsLoading(false);
         }
@@ -59,7 +65,7 @@ export function ReportView({ onOpenLegal }) {
 
     setIsPublishing(true);
     try {
-      const res = await fetch(`http://localhost:8000/publish-report/${room}`, {
+      const res = await fetch(apiUrl(`/publish-report/${room}`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ published: newState })
@@ -74,10 +80,15 @@ export function ReportView({ onOpenLegal }) {
     }
   };
 
+  if (!room) return (
+    <div className="auth-page-container">
+      <div style={{ padding: '40px', textAlign: 'center', color: '#ff4d4d', fontWeight: 600 }}>Error: No room ID provided.</div>
+    </div>
+  );
   if (isLoading) return (
     <div className="auth-page-container">
       <div className="mesh-glow-sphere sphere-1" />
-      <span style={{ color: 'rgba(0,0,0,0.5)', fontWeight: 600, letterSpacing: '0.1em' }}>ANALYZING PERFORMANCE...</span>
+      <span style={{ color: 'rgba(255,255,255,0.6)', fontWeight: 600, letterSpacing: '0.1em', zIndex: 10, display: 'block', margin: 'auto', textAlign: 'center' }}>ANALYZING PERFORMANCE...</span>
     </div>
   );
   if (error) return (
@@ -85,6 +96,23 @@ export function ReportView({ onOpenLegal }) {
       <div style={{ padding: '40px', textAlign: 'center', color: '#ff4d4d', fontWeight: 600 }}>Error: {error}</div>
     </div>
   );
+
+  const codingKeywords = ['software', 'developer', 'engineer', 'programmer', 'swe', 'frontend', 'backend', 'fullstack', 'full-stack', 'devops', 'data scientist', 'data engineer', 'ml engineer', 'machine learning', 'web dev', 'ios', 'android', 'mobile dev'];
+  const isCoding = report?.role && codingKeywords.some(k => report.role.toLowerCase().includes(k));
+
+  const metricsList = isCoding ? [
+    { label: "Technical Skill", value: report.feedback?.metrics?.technical || 0, color: "#82b342" },
+    { label: "Problem Solving", value: report.feedback?.metrics?.problem_solving || 0, color: "#6D8B74" },
+    { label: "Communication", value: report.feedback?.metrics?.communication || 0, color: "#0284c7" },
+    { label: "Code Integrity", value: report.feedback?.metrics?.code_quality || 0, color: "#a2d2ff" },
+    { label: "Optimization", value: report.feedback?.metrics?.optimization || 0, color: "#ea580c" },
+  ] : [
+    { label: "Domain Knowledge", value: report.feedback?.metrics?.technical || 0, color: "#82b342" },
+    { label: "Situational Judgement", value: report.feedback?.metrics?.problem_solving || 0, color: "#6D8B74" },
+    { label: "Communication", value: report.feedback?.metrics?.communication || 0, color: "#0284c7" },
+    { label: "Crisis Management", value: report.feedback?.metrics?.code_quality || 0, color: "#a2d2ff" },
+    { label: "Leadership & Initiative", value: report.feedback?.metrics?.optimization || 0, color: "#ea580c" },
+  ];
 
   return (
     <div className="auth-page-container">
@@ -176,8 +204,8 @@ export function ReportView({ onOpenLegal }) {
             {/* Privacy Toggle */}
             <div className="settings-card" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 20px', margin: 0 }}>
               <div style={{ flex: 1 }}>
-                <p style={{ margin: 0, fontSize: '11px', color: 'rgba(0,0,0,0.4)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Privacy Control</p>
-                <p style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: isPublished ? 'var(--accent)' : '#1e293b' }}>
+                <p style={{ margin: 0, fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Privacy Control</p>
+                <p style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: isPublished ? 'var(--accent)' : '#ffffff' }}>
                   {isPublished ? "Shared with Recruiters" : "Private Session"}
                 </p>
               </div>
@@ -186,8 +214,8 @@ export function ReportView({ onOpenLegal }) {
                 disabled={isPublishing}
                 style={{
                   width: '44px', height: '22px', borderRadius: '11px',
-                  background: isPublished ? 'var(--accent)' : 'rgba(0,0,0,0.1)',
-                  border: '1px solid rgba(0,0,0,0.05)', cursor: 'pointer', position: 'relative',
+                  background: isPublished ? 'var(--accent)' : 'rgba(255, 255, 255, 0.08)',
+                  border: '1px solid rgba(255, 255, 255, 0.05)', cursor: 'pointer', position: 'relative',
                   transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                   opacity: isPublishing ? 0.5 : 1
                 }}
@@ -197,7 +225,7 @@ export function ReportView({ onOpenLegal }) {
                   background: 'white', position: 'absolute', top: '2px',
                   left: isPublished ? '24px' : '2px',
                   transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.4)'
                 }} />
               </button>
             </div>
@@ -214,8 +242,8 @@ export function ReportView({ onOpenLegal }) {
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
-                background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)', // Deep premium slate
-                boxShadow: '0 8px 20px -5px rgba(15,23,42,0.3), inset 0 1px 1px rgba(255,255,255,0.1)',
+                background: 'rgba(255, 255, 255, 0.08)', border: '1px solid rgba(255, 255, 255, 0.1)',
+                boxShadow: '0 8px 20px -5px rgba(255, 255, 255, 0.01)',
                 border: 'none',
                 margin: 0,
                 borderRadius: '999px',
@@ -223,11 +251,11 @@ export function ReportView({ onOpenLegal }) {
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.boxShadow = '0 12px 25px -5px rgba(15,23,42,0.4), inset 0 1px 1px rgba(255,255,255,0.1)';
+                e.currentTarget.style.boxShadow = '0 12px 25px -5px rgba(255, 255, 255, 0.02)';
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 8px 20px -5px rgba(15,23,42,0.3), inset 0 1px 1px rgba(255,255,255,0.1)';
+                e.currentTarget.style.boxShadow = '0 8px 20px -5px rgba(255, 255, 255, 0.01)';
               }}
             >
               <span style={{ fontSize: '16px' }}>📥</span> Download Professional PDF
@@ -240,56 +268,58 @@ export function ReportView({ onOpenLegal }) {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
 
               {/* Score Card */}
-              <div className="glass-panel" style={{ padding: '16px', background: 'rgba(255,255,255,0.6)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                <h3 style={{ fontSize: '12px', color: '#334155', fontWeight: 800, marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Score Card</h3>
+              <div className="glass-panel-dark" style={{ padding: '16px', background: 'rgba(18, 22, 26, 0.55)', border: '1px solid rgba(255,255,255,0.04)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                <h3 style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.8)', fontWeight: 800, marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Score Card</h3>
 
-                <div style={{ textAlign: 'center', padding: '12px 0', borderBottom: '1px solid rgba(0,0,0,0.08)', marginBottom: '12px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                <div style={{ textAlign: 'center', padding: '12px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', marginBottom: '12px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                   <div style={{ fontSize: '48px', fontWeight: 900, color: (report?.score || 0) >= 80 ? 'var(--accent)' : '#ef4444', textShadow: `0 8px 24px ${(report?.score || 0) >= 80 ? 'rgba(130, 179, 66, 0.4)' : 'rgba(239, 68, 68, 0.4)'}`, lineHeight: 1 }}>
                     {report?.score || 0}<span style={{ fontSize: '18px', opacity: 0.5 }}>%</span>
                   </div>
-                  <p style={{ color: '#1e293b', fontWeight: 700, margin: '8px 0 0 0', textTransform: 'uppercase', fontSize: '11px' }}>{report?.feedback?.verdict || "Assessment Pending"}</p>
+                  <p style={{ color: '#ffffff', fontWeight: 700, margin: '8px 0 0 0', textTransform: 'uppercase', fontSize: '11px' }}>{report?.feedback?.verdict || "Assessment Pending"}</p>
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
-                    <span style={{ color: 'rgba(0,0,0,0.5)' }}>Candidate</span>
-                    <span style={{ color: '#1e293b', fontWeight: 600 }}>{report?.username || "Candidate"}</span>
+                    <span style={{ color: 'rgba(255, 255, 255, 0.5)' }}>Candidate</span>
+                    <span style={{ color: '#ffffff', fontWeight: 600 }}>{report?.username || "Candidate"}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
-                    <span style={{ color: 'rgba(0,0,0,0.5)' }}>Target Role</span>
-                    <span style={{ color: '#1e293b', fontWeight: 600 }}>{report?.role || "N/A"}</span>
+                    <span style={{ color: 'rgba(255, 255, 255, 0.5)' }}>Target Role</span>
+                    <span style={{ color: '#ffffff', fontWeight: 600 }}>{report?.role || "N/A"}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
-                    <span style={{ color: '#64748b', fontWeight: 600 }}>Status</span>
+                    <span style={{ color: 'rgba(255, 255, 255, 0.5)', fontWeight: 600 }}>Status</span>
                     <span style={{ color: 'var(--accent)', fontWeight: 800 }}>VERIFIED AI-SCORE</span>
                   </div>
                 </div>
               </div>
 
               {/* Performance Metrics */}
-              <div className="glass-panel" style={{ padding: '16px', background: 'rgba(255,255,255,0.6)', display: 'flex', flexDirection: 'column' }}>
-                <h3 style={{ fontSize: '12px', color: '#334155', fontWeight: 800, marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Performance Metrics</h3>
+              <div className="glass-panel-dark" style={{ padding: '16px', background: 'rgba(18, 22, 26, 0.55)', border: '1px solid rgba(255,255,255,0.04)', display: 'flex', flexDirection: 'column' }}>
+                <h3 style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.8)', fontWeight: 800, marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Performance Metrics</h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: 1, justifyContent: 'center' }}>
-                  <ProfessionalMetricChart label="Technical Skill" value={report.feedback?.metrics?.technical || 0} color="#82b342" />
-                  <ProfessionalMetricChart label="Problem Solving" value={report.feedback?.metrics?.problem_solving || 0} color="#6D8B74" />
-                  <ProfessionalMetricChart label="Communication" value={report.feedback?.metrics?.communication || 0} color="#0284c7" />
-                  <ProfessionalMetricChart label="Code Integrity" value={report.feedback?.metrics?.code_quality || 0} color="#0f172a" />
-                  <ProfessionalMetricChart label="Optimization" value={report.feedback?.metrics?.optimization || 0} color="#ea580c" />
+                  {metricsList.map((m, idx) => (
+                    <ProfessionalMetricChart key={idx} label={m.label} value={m.value} color={m.color} />
+                  ))}
                 </div>
               </div>
 
               {/* AI Calibration Integrity */}
-              <div className="glass-panel" style={{ padding: '16px', background: 'linear-gradient(135deg, rgba(255,255,255,1) 0%, rgba(241,248,223,1) 100%)', display: 'flex', flexDirection: 'column' }}>
+              <div className="glass-panel-dark" style={{ padding: '16px', background: 'linear-gradient(135deg, rgba(18, 22, 26, 0.7) 0%, rgba(130, 179, 66, 0.05) 100%)', border: '1px solid rgba(255,255,255,0.04)', display: 'flex', flexDirection: 'column' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                  <h4 style={{ fontSize: '11px', color: '#4a7c1f', margin: 0, textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 800 }}>AI Calibration</h4>
-                  <span style={{ fontSize: '8px', color: '#475569', fontWeight: 700, background: 'rgba(0,0,0,0.05)', padding: '2px 6px', borderRadius: '4px' }}>HIGH CONFIDENCE</span>
+                  <h4 style={{ fontSize: '11px', color: 'var(--accent)', margin: 0, textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 800 }}>AI Calibration</h4>
+                  <span style={{ fontSize: '8px', color: 'rgba(255, 255, 255, 0.7)', fontWeight: 700, background: 'rgba(255,255,255,0.08)', padding: '2px 6px', borderRadius: '4px' }}>HIGH CONFIDENCE</span>
                 </div>
 
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                  <div style={{ height: '8px', background: 'rgba(0,0,0,0.05)', borderRadius: '4px', overflow: 'hidden', marginBottom: '8px' }}>
+                  <div style={{ height: '8px', background: 'rgba(255,255,255,0.08)', borderRadius: '4px', overflow: 'hidden', marginBottom: '8px' }}>
                     <div style={{ width: `${report?.score || 0}%`, height: '100%', background: 'linear-gradient(90deg, #618264 0%, #82b342 100%)' }} />
                   </div>
-                  <p style={{ fontSize: '12px', color: '#475569', margin: 0, fontWeight: 500, lineHeight: 1.4 }}>High technical engagement and consistent verbal delivery detected via Monica Engine runtime analysis.</p>
+                  <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.7)', margin: 0, fontWeight: 500, lineHeight: 1.4 }}>
+                    {isCoding
+                      ? "High technical engagement and consistent verbal delivery detected via Monica Engine runtime analysis."
+                      : "Strong situational composure, active listening, and values-based reasoning detected via Monica Engine runtime analysis."}
+                  </p>
                 </div>
               </div>
 
@@ -298,20 +328,20 @@ export function ReportView({ onOpenLegal }) {
             {/* Bottom Row: Narrative Feedback (Full Width) securely locked on two columns */}
             {report.feedback && (
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <div className="glass-panel" style={{ borderLeft: '6px solid var(--accent)', padding: '16px', background: 'rgba(255,255,255,0.6)' }}>
+                <div className="glass-panel-dark" style={{ borderLeft: '6px solid var(--accent)', padding: '16px', background: 'rgba(18, 22, 26, 0.55)', borderTop: '1px solid rgba(255,255,255,0.04)', borderRight: '1px solid rgba(255,255,255,0.04)', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
                     <span style={{ fontSize: '20px' }}>💎</span>
-                    <h3 style={{ margin: 0, fontSize: '15px', color: '#1e293b', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 800 }}>Key Strengths</h3>
+                    <h3 style={{ margin: 0, fontSize: '15px', color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 800 }}>Key Strengths</h3>
                   </div>
-                  <p style={{ lineHeight: 1.4, color: '#334155', fontSize: '12px', whiteSpace: 'pre-wrap', fontWeight: 500, margin: 0 }}>{report.feedback.strengths}</p>
+                  <p style={{ lineHeight: 1.4, color: 'rgba(255,255,255,0.8)', fontSize: '12px', whiteSpace: 'pre-wrap', fontWeight: 500, margin: 0 }}>{report.feedback.strengths}</p>
                 </div>
 
-                <div className="glass-panel" style={{ borderLeft: '6px solid #ef4444', padding: '16px', background: 'rgba(255,255,255,0.6)' }}>
+                <div className="glass-panel-dark" style={{ borderLeft: '6px solid #ef4444', padding: '16px', background: 'rgba(18, 22, 26, 0.55)', borderTop: '1px solid rgba(255,255,255,0.04)', borderRight: '1px solid rgba(255,255,255,0.04)', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
                     <span style={{ fontSize: '20px' }}>📈</span>
-                    <h3 style={{ margin: 0, fontSize: '15px', color: '#1e293b', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 800 }}>Growth Areas</h3>
+                    <h3 style={{ margin: 0, fontSize: '15px', color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 800 }}>Growth Areas</h3>
                   </div>
-                  <p style={{ lineHeight: 1.4, color: '#334155', fontSize: '12px', whiteSpace: 'pre-wrap', fontWeight: 500, margin: 0 }}>{report.feedback.improvements}</p>
+                  <p style={{ lineHeight: 1.4, color: 'rgba(255,255,255,0.8)', fontSize: '12px', whiteSpace: 'pre-wrap', fontWeight: 500, margin: 0 }}>{report.feedback.improvements}</p>
                 </div>
               </div>
             )}

@@ -4,7 +4,9 @@ WORKDIR /app
 
 # Accept build arguments (like the Clerk Publishable Key)
 ARG VITE_CLERK_PUBLISHABLE_KEY
+ARG VITE_API_BASE_URL=/api
 ENV VITE_CLERK_PUBLISHABLE_KEY=$VITE_CLERK_PUBLISHABLE_KEY
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 
 COPY package*.json ./
 RUN npm install

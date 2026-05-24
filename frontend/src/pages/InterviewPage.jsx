@@ -3,8 +3,7 @@ import { useUser } from '@clerk/clerk-react';
 import { LiveKitRoom, RoomAudioRenderer } from '@livekit/components-react';
 import { LandingFooter } from '../components/layout/LandingFooter';
 import MainStage from '../features/interview/MainStage';
-
-const TOKEN_SERVER_URL = 'http://localhost:8000/token';
+import { apiUrl } from '../lib/api';
 
 export function InterviewPage({ guestMode = false, onOpenLegal }) {
   const { user } = useUser();
@@ -73,7 +72,7 @@ export function InterviewPage({ guestMode = false, onOpenLegal }) {
       }
       const metadata = JSON.stringify(metadataObj);
       const response = await fetch(
-        `${TOKEN_SERVER_URL}?role=${encodeURIComponent(role)}&metadata=${encodeURIComponent(metadata)}`
+        `${apiUrl('/token')}?role=${encodeURIComponent(role)}&metadata=${encodeURIComponent(metadata)}`
       );
       if (!response.ok) throw new Error('Failed to connect to the backend server.');
       const data = await response.json();
@@ -104,8 +103,8 @@ export function InterviewPage({ guestMode = false, onOpenLegal }) {
     return (
       <main style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-primary)', fontFamily: "'Inter', sans-serif" }}>
         <div className="settings-card animate-fade-in-up" style={{ padding: '48px', textAlign: 'center', maxWidth: '500px' }}>
-          <h2 style={{ fontSize: '28px', fontWeight: 800, marginBottom: '16px', color: '#1e293b' }}>Interview Complete</h2>
-          <p style={{ color: 'rgba(0,0,0,0.6)', marginBottom: '20px', lineHeight: 1.6, fontSize: '15px' }}>
+          <h2 style={{ fontSize: '28px', fontWeight: 800, marginBottom: '16px', color: '#ffffff' }}>Interview Complete</h2>
+          <p style={{ color: 'rgba(255, 255, 255, 0.7)', marginBottom: '20px', lineHeight: 1.6, fontSize: '15px' }}>
             Thank you for your time. Your responses have been recorded and your mock interview is now concluded.
           </p>
           <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
@@ -117,7 +116,7 @@ export function InterviewPage({ guestMode = false, onOpenLegal }) {
               target="_blank"
               rel="noopener noreferrer"
               className="pill-button"
-              style={{ background: '#1e293b', color: '#fff' }}
+              style={{ background: 'rgba(255, 255, 255, 0.08)', border: '1px solid rgba(255, 255, 255, 0.1)', color: '#fff' }}
             >
               View Feedback Report
             </a>
@@ -185,10 +184,10 @@ export function InterviewPage({ guestMode = false, onOpenLegal }) {
         <div className="monica-presence-card" style={{ position: 'fixed', bottom: '40px', left: '40px', zIndex: 9999 }}>
           <img src="/monica_executive_portrait.png" alt="Monica Portrait" className="presence-avatar" loading="lazy" width="40" height="40" />
           <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <span style={{ fontSize: '13px', fontWeight: 600, color: '#1e293b' }}>Monica is Online</span>
+            <span style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff' }}>Monica is Online</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <div className="presence-status-dot"></div>
-              <span style={{ fontSize: '11px', color: 'rgba(0,0,0,0.7)', fontWeight: 500 }}>Ready to interview</span>
+              <span style={{ fontSize: '11px', color: 'rgba(255, 255, 255, 0.6)', fontWeight: 500 }}>Ready to interview</span>
             </div>
           </div>
         </div>
@@ -327,18 +326,18 @@ export function InterviewPage({ guestMode = false, onOpenLegal }) {
       </div>
 
       {/* Grounding Section */}
-      <section style={{ width: '100%', padding: '100px 24px', textAlign: 'center', background: 'rgba(255, 255, 255, 0.2)', borderTop: '1px solid rgba(255, 255, 255, 0.6)', marginTop: '60px' }}>
+      <section style={{ width: '100%', padding: '100px 24px', textAlign: 'center', background: 'rgba(10, 15, 20, 0.4)', borderTop: '1px solid rgba(255, 255, 255, 0.05)', marginTop: '60px' }}>
         <div style={{ maxWidth: '800px', margin: '0 auto' }}>
           <h3 className="brand-text-gradient" style={{ fontSize: '32px', fontWeight: 800, marginBottom: '24px' }}>Calibrated to Professional Standards.</h3>
-          <p style={{ fontSize: '18px', color: 'rgba(0,0,0,0.4)', maxWidth: '540px', margin: '0 auto 40px', lineHeight: 1.6 }}>
+          <p style={{ fontSize: '18px', color: 'rgba(255, 255, 255, 0.6)', maxWidth: '540px', margin: '0 auto 40px', lineHeight: 1.6 }}>
             Monica's assessment logic is grounded in technical merit and behavioral intelligence, providing a private sanctuary for professional growth.
           </p>
           <div style={{ display: 'flex', justifyContent: 'center', gap: '32px' }}>
             {[['Verified', 'Logic Engine'], ['Grounded', 'Bias Audit'], ['Secure', 'Local-Only']].map(([val, lbl], i) => (
               <React.Fragment key={i}>
-                {i > 0 && <div style={{ height: '40px', width: '1px', background: 'rgba(0,0,0,0.1)' }} />}
+                {i > 0 && <div style={{ height: '40px', width: '1px', background: 'rgba(255, 255, 255, 0.08)' }} />}
                 <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: '24px', fontWeight: 800, color: '#1e293b' }}>{val}</div>
+                  <div style={{ fontSize: '24px', fontWeight: 800, color: '#ffffff' }}>{val}</div>
                   <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.2em', color: 'var(--accent)', fontWeight: 700, marginTop: '4px' }}>{lbl}</div>
                 </div>
               </React.Fragment>
