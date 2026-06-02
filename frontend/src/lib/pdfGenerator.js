@@ -20,12 +20,12 @@ export const generateReportPDF = async (elementId, filename, callbacks = {}) => 
     }
 
     // CRITICAL FIX: html2canvas crashes on CSS backdrop-filter. We MUST strip it before generating, then restore it.
-    const glassPanels = element.querySelectorAll('.glass-panel');
-    const originalFilters = [];
+    const glassPanels = element.querySelectorAll('.glass-panel, .glass-panel-dark, .glass-panel-light');
+    const originalStyles = [];
     glassPanels.forEach((p, i) => {
-      originalFilters[i] = p.style.backdropFilter;
+      originalStyles[i] = { backdropFilter: p.style.backdropFilter, backgroundColor: p.style.backgroundColor };
       p.style.backdropFilter = 'none';
-      p.style.backgroundColor = '#f8faf9'; // Fallback to solid light background so the PDF looks perfect
+      p.style.backgroundColor = '#12161a';
     });
 
     // Measure exact DOM bounds to create a perfectly sized, non-paginated digital poster
@@ -43,10 +43,10 @@ export const generateReportPDF = async (elementId, filename, callbacks = {}) => 
 
     await html2pdf().set(opt).from(element).save();
 
-    // Restore the gorgeous frosted glass look immediately after download
+    // Restore the frosted glass look immediately after download
     glassPanels.forEach((p, i) => {
-      p.style.backdropFilter = originalFilters[i];
-      p.style.backgroundColor = 'rgba(255,255,255,0.6)';
+      p.style.backdropFilter = originalStyles[i].backdropFilter;
+      p.style.backgroundColor = originalStyles[i].backgroundColor;
     });
 
     if (onSuccess) onSuccess();

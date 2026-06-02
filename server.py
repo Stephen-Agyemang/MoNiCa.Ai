@@ -1,21 +1,41 @@
 import os
 import logging
 from uuid import uuid4
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from livekit import api
 from dotenv import load_dotenv
 import time
-import requests
 from fastapi.responses import JSONResponse
+import redis.asyncio as aioredis
+import httpx
 
 load_dotenv()
+
+REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379")
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("monica-token-server")
 
-app = FastAPI()
+_redis: aioredis.Redis | None = None
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    global _redis
+    try:
+        _redis = aioredis.from_url(REDIS_URL, decode_responses=True)
+        await _redis.ping()
+        logger.info(f"Redis connected at {REDIS_URL}")
+    except Exception as e:
+        logger.warning(f"Redis unavailable ({e}). Rate limiting falls back to in-memory.")
+        _redis = None
+    yield
+    if _redis:
+        await _redis.aclose()
+
+app = FastAPI(lifespan=lifespan)
 
 # Allow the React frontend to communicate with this token server.
 DEFAULT_ALLOWED_ORIGINS = [
@@ -45,9 +65,10 @@ LIVEKIT_URL = os.getenv("LIVEKIT_URL")
 LIVEKIT_API_KEY = os.getenv("LIVEKIT_API_KEY")
 LIVEKIT_API_SECRET = os.getenv("LIVEKIT_API_SECRET")
 
-# Basic in-memory rate limiting (IP -> [timestamps])
-RATE_LIMIT_STORE = {}
 MAX_REQUESTS_PER_MINUTE = 5
+
+# In-memory fallback used when Redis is unavailable (e.g. plain local dev without Docker)
+_fallback_store: dict[str, list[float]] = {}
 
 @app.middleware("http")
 async def rate_limit_middleware(request: Request, call_next):
@@ -56,25 +77,44 @@ async def rate_limit_middleware(request: Request, call_next):
 
     client_ip = getattr(request.client, "host", "unknown")
     now = time.time()
-    
-    if client_ip not in RATE_LIMIT_STORE:
-        RATE_LIMIT_STORE[client_ip] = []
-        
-    RATE_LIMIT_STORE[client_ip] = [t for t in RATE_LIMIT_STORE[client_ip] if now - t < 60]
-    
-    if len(RATE_LIMIT_STORE[client_ip]) >= MAX_REQUESTS_PER_MINUTE:
-        return JSONResponse(status_code=429, content={"detail": "Rate limit exceeded. Try again later."})
-        
-    RATE_LIMIT_STORE[client_ip].append(now)
-    
-    # Prune old IPs to prevent memory leak
-    if len(RATE_LIMIT_STORE) > 1000:
-        keys_to_delete = [ip for ip, times in RATE_LIMIT_STORE.items() if not times or now - times[-1] > 60]
-        for k in keys_to_delete:
-            RATE_LIMIT_STORE.pop(k, None)
-            
+
+    if _redis is not None:
+        # Sliding-window via Redis sorted set — survives restarts, works across replicas
+        key = f"rate:{client_ip}"
+        try:
+            async with _redis.pipeline(transaction=True) as pipe:
+                member = f"{now}:{uuid4().hex[:8]}"   # unique per request
+                pipe.zadd(key, {member: now})
+                pipe.zremrangebyscore(key, 0, now - 60)
+                pipe.zcard(key)
+                pipe.expire(key, 60)
+                _, _, count, _ = await pipe.execute()
+            if count > MAX_REQUESTS_PER_MINUTE:
+                return JSONResponse(status_code=429, content={"detail": "Rate limit exceeded. Try again later."})
+        except Exception as e:
+            logger.warning(f"Redis rate-limit check failed: {e}. Falling through to in-memory.")
+            if _redis_fallback(client_ip, now):
+                return JSONResponse(status_code=429, content={"detail": "Rate limit exceeded. Try again later."})
+    else:
+        if _redis_fallback(client_ip, now):
+            return JSONResponse(status_code=429, content={"detail": "Rate limit exceeded. Try again later."})
+
     response = await call_next(request)
     return response
+
+def _redis_fallback(client_ip: str, now: float) -> bool:
+    """In-memory sliding-window check. Returns True if the request should be blocked."""
+    _fallback_store.setdefault(client_ip, [])
+    _fallback_store[client_ip] = [t for t in _fallback_store[client_ip] if now - t < 60]
+    if len(_fallback_store[client_ip]) >= MAX_REQUESTS_PER_MINUTE:
+        return True
+    _fallback_store[client_ip].append(now)
+    # Prune stale IPs to prevent unbounded memory growth
+    if len(_fallback_store) > 1000:
+        stale = [ip for ip, ts in _fallback_store.items() if not ts or now - ts[-1] > 60]
+        for k in stale:
+            _fallback_store.pop(k, None)
+    return False
 
 @app.get("/healthz")
 async def healthz():
@@ -82,6 +122,17 @@ async def healthz():
 
 import json
 import database
+from pydantic import BaseModel
+from typing import Optional
+
+class TokenRequest(BaseModel):
+    room: Optional[str] = None
+    role: str = "Candidate"
+    metadata: Optional[str] = None
+
+@app.post("/token")
+async def post_token(body: TokenRequest):
+    return await get_token(room=body.room, role=body.role, metadata=body.metadata)
 
 @app.get("/token")
 async def get_token(room: str | None = None, role: str = "Candidate", metadata: str | None = None):
@@ -213,55 +264,46 @@ async def publish_report(room_name: str, payload: dict):
 @app.post("/support")
 async def post_support_request(request: Request):
     """Securely handles incoming support tickets, saving them to DB and triggering a Formspree relay."""
-    import urllib.request
-    import json
+    data = await request.json()
+    email = data.get("email", "Anonymous")
+    subject = data.get("subject", "No Subject")
+    message = data.get("message", "")
 
+    if not message:
+        raise HTTPException(status_code=400, detail="Message content is required.")
+
+    # 1. Permanent storage
     try:
-        data = await request.json()
-        email = data.get("email", "Anonymous")
-        subject = data.get("subject", "No Subject")
-        message = data.get("message", "")
-
-        if not message:
-            raise HTTPException(status_code=400, detail="Message content is required.")
-
-        # 1. Permanent Storage (Supabase)
         database.create_support_request(email, subject, message)
-        logger.info(f"Support Request Persisted: {subject} from {email}")
-
-        # 2. Hybrid Relay (Formspree)
-        formspree_url = os.getenv("FORMSPREE_URL")
-
-        if formspree_url:
-            try:
-                # Construct Payload for Formspree
-                payload = {
-                    "email": email,
-                    "subject": f"Monica Support: {subject}",
-                    "message": message
-                }
-                
-                req = urllib.request.Request(
-                    formspree_url, 
-                    data=json.dumps(payload).encode('utf-8'),
-                    headers={'Content-Type': 'application/json', 'User-Agent': 'Monica-AI-Backend'}
-                )
-                
-                with urllib.request.urlopen(req) as response:
-                    if response.status == 200:
-                        logger.info("Formspree Relay Successful.")
-                    else:
-                        logger.error(f"Formspree Relay returned status: {response.status}")
-            except Exception as relay_err:
-                logger.error(f"Formspree Relay Failed: {relay_err}")
-        else:
-            logger.warning("Formspree Relay Skipped: FORMSPREE_URL not set in .env")
-
-        return {"status": "success", "message": "Support Request Received."}
-
+        logger.info(f"Support request persisted: '{subject}' from {email}")
     except Exception as e:
-        logger.error(f"Failed to process support request: {e}")
-        raise HTTPException(status_code=500, detail="Support Engine Encountered an Error.")
+        logger.error(f"Failed to persist support request: {e}")
+        raise HTTPException(status_code=500, detail="Failed to save support request.")
+
+    # 2. Async email relay via Formspree
+    formspree_url = os.getenv("FORMSPREE_URL")
+    if formspree_url:
+        try:
+            async with httpx.AsyncClient(timeout=8.0) as client:
+                resp = await client.post(
+                    formspree_url,
+                    json={
+                        "email": email,
+                        "subject": f"Monica Support: {subject}",
+                        "message": message,
+                    },
+                    headers={"User-Agent": "Monica-AI-Backend"},
+                )
+            if resp.is_success:
+                logger.info("Formspree relay successful.")
+            else:
+                logger.error(f"Formspree relay returned {resp.status_code}: {resp.text[:200]}")
+        except Exception as relay_err:
+            logger.error(f"Formspree relay failed: {relay_err}")
+    else:
+        logger.warning("Formspree relay skipped: FORMSPREE_URL not set in .env")
+
+    return {"status": "success", "message": "Support Request Received."}
 
 if __name__ == "__main__":
     import uvicorn

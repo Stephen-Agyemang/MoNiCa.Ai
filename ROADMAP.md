@@ -11,11 +11,14 @@ This document outlines the strategic evolution of Monica from a mock interview t
 - **Interviewer Persona**: Refined "Monica" behavior to simulate real-world, collaborative problem-solving.
 - **Executive UI**: Strict 100vh layout with "Monica Induction" protocols for a premium SaaS experience.
 - **Sovereign Consent**: A unique approach to data privacy where users control session visibility to recruiters.
+- **Redis Infrastructure**: Redis added to Docker Compose stack (`redis:alpine`) with a healthcheck-gated startup. FastAPI rate limiter upgraded from in-memory dict to a persistent Redis sliding-window (ZSET), with graceful in-memory fallback for plain local dev. Sets the foundation for background task queues in Phase 2.
 
 ---
 
 ## 🚀 Phase 2: Behavioral & Technical Intelligence (Short-Term)
 *Target: Next 4 Weeks*
+
+> **Infrastructure note**: Redis is now live in the stack (Phase 1 completion). Phase 2 background workers (audio processing, async score computation) can attach to it directly using ARQ or Celery with `redis://redis:6379` as the broker URL — no new infrastructure required.
 
 ### 2.1 Private Session Recording
 - **Personal Replay Engine**: Implement client-side recording so users can watch their own performance.

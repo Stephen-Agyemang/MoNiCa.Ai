@@ -1217,3 +1217,444 @@ html {
 .cl-internal-1x6k721 {
   color: rgba(255, 255, 255, 0.9) !important;
 }
+
+/* ─────────────────────────────────────────────────────
+   Clerk Social Button — Immediate Click Feedback
+   Clerk makes an async API call before the OAuth redirect,
+   causing a visible dead zone. These rules give instant
+   visual response so the button feels fast.
+   ───────────────────────────────────────────────────── */
+.cl-socialButtonsBlockButton {
+  transition: transform 0.1s ease, opacity 0.1s ease, background 0.15s ease !important;
+  will-change: transform, opacity;
+}
+
+.cl-socialButtonsBlockButton:active {
+  transform: scale(0.95) !important;
+  opacity: 0.65 !important;
+}
+
+.cl-socialButtonsBlockButton:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-color: rgba(255, 255, 255, 0.25) !important;
+}
+
+/* Spinner shown by Clerk while OAuth redirect is preparing */
+.cl-socialButtonsBlockButton[data-loading] {
+  opacity: 0.6 !important;
+  cursor: wait !important;
+  pointer-events: none !important;
+}
+
+/* Also improve the primary form submit button */
+.cl-formButtonPrimary {
+  transition: transform 0.15s ease, box-shadow 0.15s ease !important;
+}
+
+.cl-formButtonPrimary:active {
+  transform: scale(0.97) !important;
+}
+
+/* ─────────────────────────────────────────────────────
+   Consolidated UI Utility Classes
+   ───────────────────────────────────────────────────── */
+
+/* ─── Form Primitives ──────────────────────────────── */
+.form-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.9);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  margin-bottom: 10px;
+}
+
+.form-label-optional {
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+  color: rgba(255, 255, 255, 0.5);
+  margin-left: 4px;
+}
+
+.form-input {
+  width: 100%;
+  padding: 16px 20px;
+  border-radius: 12px;
+  border: 1px solid var(--border-medium);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-heading);
+  font-size: 15px;
+  font-weight: 500;
+  outline: none;
+  font-family: inherit;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-sizing: border-box;
+}
+
+.form-input:focus {
+  border-color: var(--accent);
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 0 15px var(--accent-subtle);
+}
+
+/* ─── Two-column Form Grid ─────────────────────────── */
+.form-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+@media (max-width: 540px) {
+  .form-grid-2 { grid-template-columns: 1fr; }
+}
+
+/* ─── Interview Mode Selector ──────────────────────── */
+.mode-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.mode-btn {
+  padding: 10px 14px;
+  border-radius: 24px;
+  border: 1px solid var(--border-medium);
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.mode-btn.active {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(130, 179, 66, 0.4);
+}
+
+/* ─── Primary CTA Button ───────────────────────────── */
+.btn-cta {
+  width: 100%;
+  padding: 18px;
+  font-size: 16px;
+  background: var(--accent);
+  color: #05070a;
+  border-radius: 24px;
+  font-weight: 900;
+  border: none;
+  cursor: pointer;
+  letter-spacing: 0.05em;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 20px var(--accent-subtle);
+  font-family: inherit;
+  margin: 0;
+}
+
+.btn-cta:hover:not(:disabled) {
+  transform: translateY(-2px);
+  background: var(--accent-hover);
+  box-shadow: 0 8px 25px rgba(130, 179, 66, 0.4);
+}
+
+.btn-cta:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ─── Strictness Slider ────────────────────────────── */
+.strictness-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.strictness-side-label {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 600;
+  min-width: 60px;
+}
+
+.strictness-value-badge {
+  width: 32px;
+  height: 32px;
+  border-radius: 16px;
+  background: var(--accent);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 800;
+  box-shadow: 0 2px 10px rgba(130, 179, 66, 0.5);
+  flex-shrink: 0;
+}
+
+.custom-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(130, 179, 66, 0.5);
+}
+
+.custom-range::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 2px 8px rgba(130, 179, 66, 0.5);
+}
+
+/* ─── Form Error ───────────────────────────────────── */
+.form-error {
+  margin-bottom: 20px;
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  background: rgba(239, 68, 68, 0.06);
+  border: 1px solid rgba(239, 68, 68, 0.15);
+  color: #dc2626;
+  font-size: 13px;
+  font-weight: 500;
+  text-align: center;
+}
+
+/* ─── Resume Drop Zone ─────────────────────────────── */
+.resume-drop-zone {
+  position: relative;
+  border: 1px dashed rgba(255, 255, 255, 0.25);
+  border-radius: 12px;
+  padding: 30px 20px;
+  text-align: center;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.05);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.resume-drop-zone:hover,
+.resume-drop-zone.drag-over {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--accent);
+}
+
+/* ─── Page Header (top-right user controls) ────────── */
+.page-header {
+  width: 100%;
+  padding: 16px 28px;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  position: relative;
+  z-index: 10;
+  box-sizing: border-box;
+}
+
+/* ─── Live Session Header ──────────────────────────── */
+.session-header {
+  padding: 16px 32px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(15, 20, 25, 0.7);
+  border-bottom: 1px solid var(--border-light);
+  position: relative;
+  z-index: 100;
+  flex-shrink: 0;
+}
+
+.session-end-btn {
+  padding: 8px 20px;
+  background: rgba(239, 68, 68, 0.05);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  color: #ff4d4d;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  transition: all 0.2s;
+}
+
+.session-end-btn:hover {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+/* ─── Report Grids (responsive) ────────────────────── */
+.report-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.report-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+@media (max-width: 900px) {
+  .report-grid-3,
+  .report-grid-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ─── Report Navigation ────────────────────────────── */
+.report-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-pill);
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+  text-decoration: none;
+}
+
+.report-back-btn:hover {
+  color: var(--text-heading);
+  border-color: var(--border-medium);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* ─── Report Stat Rows ─────────────────────────────── */
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+}
+
+.stat-label { color: var(--text-muted); }
+.stat-value { color: var(--text-heading); font-weight: 600; }
+.stat-value-accent { color: var(--accent); font-weight: 800; }
+
+/* ─── Score Display ────────────────────────────────── */
+.score-display {
+  text-align: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-light);
+  margin-bottom: 12px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.score-number {
+  font-size: 48px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.score-number.pass { color: var(--accent); text-shadow: 0 8px 24px rgba(130, 179, 66, 0.4); }
+.score-number.fail { color: #ef4444; text-shadow: 0 8px 24px rgba(239, 68, 68, 0.4); }
+
+.score-verdict {
+  color: var(--text-heading);
+  font-weight: 700;
+  margin: 8px 0 0;
+  text-transform: uppercase;
+  font-size: 11px;
+}
+
+/* ─── AI Calibration Card gradient ─────────────────── */
+.report-calibration-card {
+  background: linear-gradient(135deg, rgba(18, 22, 26, 0.7) 0%, rgba(130, 179, 66, 0.05) 100%) !important;
+}
+
+/* ─── Report Action Bar ────────────────────────────── */
+.report-action-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  gap: 16px;
+}
+
+/* ─── Recruiter Table ──────────────────────────────── */
+.recruiter-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.dashboard-row-hover:hover {
+  background: rgba(255, 255, 255, 0.025) !important;
+}
+
+/* ─── Grounding / Marketing Section ────────────────── */
+.grounding-section {
+  width: 100%;
+  padding: 100px 24px;
+  text-align: center;
+  background: rgba(10, 15, 20, 0.4);
+  border-top: 1px solid var(--border-light);
+  margin-top: 60px;
+}
+
+.grounding-inner { max-width: 800px; margin: 0 auto; }
+
+.grounding-stats {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 32px;
+  flex-wrap: wrap;
+}
+
+.grounding-stat { text-align: center; }
+.grounding-stat-value { font-size: 24px; font-weight: 800; color: var(--text-heading); }
+.grounding-stat-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: var(--accent);
+  font-weight: 700;
+  margin-top: 4px;
+}
+
+.vert-divider {
+  height: 40px;
+  width: 1px;
+  background: var(--border-light);
+  flex-shrink: 0;
+}
+
+@media (max-width: 480px) {
+  .grounding-stats { gap: 24px; }
+  .vert-divider { display: none; }
+}
+
+/* ─── Interview Complete Screen ─────────────────────── */
+.complete-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-primary);
+  font-family: 'Inter', sans-serif;
+}
+
+/* ─── Presence Card Internals ───────────────────────── */
+.presence-info { display: flex; flex-direction: column; }
+.presence-name { font-size: 13px; font-weight: 600; color: var(--text-heading); }
+.presence-status { display: flex; align-items: center; gap: 6px; }
+.presence-status-label { font-size: 11px; color: var(--text-muted); font-weight: 500; }

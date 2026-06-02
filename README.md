@@ -4,20 +4,22 @@ MoNiCa.AI is a highly scalable, real-time AI interviewing agent deployed as a mi
 
 ## 🏗️ Architecture Overview
 
-The platform is designed around a robust backend infrastructure, utilizing a Python FastAPI gateway, a dedicated WebRTC worker agent, and a PostgreSQL database for state persistence. It is containerized using Docker and orchestrated via Kubernetes.
+The platform is designed around a robust backend infrastructure, utilizing a Python FastAPI gateway, a dedicated WebRTC worker agent, a Redis cache layer, and a PostgreSQL database for state persistence. It is containerized using Docker and orchestrated via Kubernetes.
 
-- **FastAPI Gateway Server:** Handles secure token generation, session management, REST endpoints, and WebRTC signaling metadata.
+- **FastAPI Gateway Server:** Handles secure token generation, session management, REST endpoints, and WebRTC signaling metadata. Rate limiting is backed by Redis for persistence across restarts and horizontal scaling.
 - **LiveKit Agent Worker:** A high-concurrency WebRTC backend service that processes incoming audio streams, orchestrates OpenAI for reasoning, Deepgram for transcription, and ElevenLabs/Tavus for speech and video synthesis.
+- **Redis Cache Layer:** In-memory store that powers the sliding-window rate limiter. Falls back gracefully to in-memory state when Redis is unavailable (plain local dev without Docker).
 - **State Persistence:** Supabase (PostgreSQL) is used for reliable storage of interview telemetry, evaluation reports, and user sessions.
 - **Infrastructure:** Microservices are containerized via Docker, deployed on Kubernetes, and managed by an Nginx Ingress Controller for secure API routing and load balancing.
 - **Client Application:** A lightweight React-based web client that connects to the LiveKit room to stream user media and display the AI avatar.
 
 ## 🚀 Tech Stack
 
-- **Backend:** Python (FastAPI)
+- **Backend:** Python (FastAPI + Uvicorn, asyncio)
 - **Real-Time Pipeline:** WebRTC, LiveKit, Python Asyncio
-- **DevOps & Infrastructure:** Docker, Kubernetes, Nginx Ingress
-- **Database:** PostgreSQL (Supabase)
+- **Cache / Rate Limiting:** Redis (redis:alpine via Docker Compose, redis.asyncio client)
+- **DevOps & Infrastructure:** Docker, Docker Compose, Kubernetes, Nginx Ingress
+- **Database:** PostgreSQL (Supabase) in production, SQLite locally
 - **AI Orchestration:** OpenAI (Reasoning), Deepgram (STT), ElevenLabs (TTS), Tavus/Simli (Visual Synthesis)
 
 ## 🛠️ Kubernetes Deployment
@@ -60,6 +62,7 @@ TAVUS_API_KEY=...
 
 # Persistence
 SUPABASE_URL=postgresql://...
-```
-://...
+
+# Cache (optional — defaults to redis://redis:6379 inside Docker Compose)
+# REDIS_URL=redis://localhost:6379
 ```

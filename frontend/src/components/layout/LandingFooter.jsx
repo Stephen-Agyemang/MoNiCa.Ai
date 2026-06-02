@@ -33,7 +33,7 @@ export const LandingFooter = ({ onOpenLegal }) => (
           <ul>
             <li><a href="#/" onClick={(e) => onOpenLegal?.(e, 'help')} rel="noopener noreferrer">Help Center</a></li>
             <li><a href="#/" onClick={(e) => onOpenLegal?.(e, 'status')} rel="noopener noreferrer">API Status</a></li>
-            <li><a href="#/" onClick={(e) => onOpenLegal?.(e, 'contact')} rel="noopener noreferrer">Contact Office</a></li>
+            <li><a href="#/" onClick={(e) => onOpenLegal?.(e, 'help')} rel="noopener noreferrer">Contact Office</a></li>
           </ul>
         </nav>
       </div>

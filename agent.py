@@ -19,7 +19,7 @@ from livekit.agents import (
 )
 from livekit.agents.voice import Agent, AgentSession
 from livekit.plugins import openai, silero, elevenlabs, tavus, cartesia
-from prompts import STRICTNESS_INSTRUCTIONS, CLOSING_ASSESSMENT_PROMPT
+from prompts import STRICTNESS_INSTRUCTIONS
 import database
 
 # Load environment configuration
@@ -540,7 +540,7 @@ Deliver this naturally in conversation, not as a robotic list. Be honest but con
 
         # 2. Setup Assistant Components
         stt_model = create_stt_engine()
-        llm_model = cast(Any, openai).LLM(model="gpt-4o-mini")
+        llm_model = cast(Any, openai).LLM(model=os.getenv("MONICA_LLM_MODEL", "gpt-4o"))
         tts_model = await create_voice_engine()
 
         # Define Agent ("The Brain")

@@ -8,8 +8,11 @@ except ImportError:
 
 import os
 import json
+import logging
 from datetime import datetime
 from dotenv import load_dotenv
+
+logger = logging.getLogger("monica-database")
 
 load_dotenv()
 SUPABASE_URL = os.getenv("SUPABASE_URL")
@@ -49,7 +52,7 @@ def init_db():
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS support_requests (
                 id SERIAL PRIMARY KEY,
-                email TEXT,
+                user_email TEXT,
                 subject TEXT,
                 message TEXT,
                 status TEXT DEFAULT 'pending',
@@ -130,6 +133,8 @@ def append_to_transcript(session_id: str, speaker: str, text: str):
             (json.dumps(transcript), session_id)
         )
         conn.commit()
+    else:
+        logger.warning("append_to_transcript: session '%s' not found — transcript entry dropped.", session_id)
     cursor.close()
     conn.close()
 
@@ -170,6 +175,8 @@ def append_code_submission(session_id: str, question: str, code: str):
             (json.dumps(subs), session_id)
         )
         conn.commit()
+    else:
+        logger.warning("append_code_submission: session '%s' not found — submission dropped.", session_id)
     cursor.close()
     conn.close()
 
@@ -205,8 +212,9 @@ def create_support_request(user_email: str, subject: str, message: str):
     conn = get_connection()
     cursor = conn.cursor()
     p = _get_placeholder()
+    email_col = "user_email" if (HAS_POSTGRES and SUPABASE_URL) else "email"
     cursor.execute(f'''
-        INSERT INTO support_requests (email, subject, message)
+        INSERT INTO support_requests ({email_col}, subject, message)
         VALUES ({p}, {p}, {p})
     ''', (user_email, subject, message))
     conn.commit()

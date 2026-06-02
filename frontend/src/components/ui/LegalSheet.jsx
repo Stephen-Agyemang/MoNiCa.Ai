@@ -4,7 +4,7 @@ import { apiUrl } from '../../lib/api';
 export function LegalSheet({ type, onClose }) {
   const [isSending, setIsSending] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
-  const [formState, setFormState] = useState({ subject: "", message: "" });
+  const [formState, setFormState] = useState({ email: "", subject: "", message: "" });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -13,7 +13,7 @@ export function LegalSheet({ type, onClose }) {
       const resp = await fetch(apiUrl('/support'), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ subject: formState.subject, message: formState.message })
+        body: JSON.stringify({ email: formState.email, subject: formState.subject, message: formState.message })
       });
       if (resp.ok) {
         setIsSubmitted(true);
@@ -50,6 +50,27 @@ export function LegalSheet({ type, onClose }) {
         </div>
       )
     },
+    security: {
+      title: "Security Overview",
+      body: (
+        <div role="region" aria-label="Security Overview">
+          <p><strong>Infrastructure Security</strong></p>
+          <p>All data in transit is encrypted via TLS 1.3. Session tokens are short-lived and scoped to a single room. No biometric data ever leaves your device.</p>
+          <p><strong>Responsible Disclosure</strong></p>
+          <p>If you discover a security vulnerability, please report it directly to our support team. We treat all reports seriously and respond within 48 hours.</p>
+        </div>
+      )
+    },
+    status: {
+      title: "System Status",
+      body: (
+        <div role="region" aria-label="System Status">
+          <p><strong>All systems operational.</strong></p>
+          <p>Monica AI infrastructure is monitored 24/7. Real-time voice/video sessions run on LiveKit's globally distributed edge network. Interview data is persisted to Supabase with automatic failover to local SQLite.</p>
+          <p>For outage reports or incident history, contact the support team below.</p>
+        </div>
+      )
+    },
     help: {
       title: "Support Center",
       body: (
@@ -77,6 +98,19 @@ export function LegalSheet({ type, onClose }) {
             </div>
           ) : (
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div className="support-input-group">
+                <label htmlFor="support-email" style={{ display: 'block', fontSize: '11px', textTransform: 'uppercase', color: 'var(--accent)', marginBottom: '8px' }}>Your Email</label>
+                <input
+                  id="support-email"
+                  type="email"
+                  placeholder="you@example.com"
+                  className="support-input"
+                  required
+                  value={formState.email}
+                  onChange={e => setFormState({ ...formState, email: e.target.value })}
+                />
+              </div>
+
               <div className="support-input-group">
                 <label htmlFor="support-subject" style={{ display: 'block', fontSize: '11px', textTransform: 'uppercase', color: 'var(--accent)', marginBottom: '8px' }}>Inquiry Classification</label>
                 <input

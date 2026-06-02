@@ -696,7 +696,6 @@ function MainStage({ role, company, mode }) {
 
             {/* Answer Area — adapts to coding vs. non-coding roles */}
             {(() => {
-              const codingKeywords = ['software', 'developer', 'engineer', 'programmer', 'swe', 'frontend', 'backend', 'fullstack', 'full-stack', 'devops', 'data scientist', 'data engineer', 'ml engineer', 'machine learning', 'web dev', 'ios', 'android', 'mobile dev'];
               const isCoding = codingKeywords.some(k => role.toLowerCase().includes(k));
 
               return isCoding ? (

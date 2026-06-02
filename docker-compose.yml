@@ -1,5 +1,17 @@
 
 services:
+  # In-memory data store — rate limiting, session caching, future task queues
+  redis:
+    image: redis:alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   # The React Vite UI running on a lightning-fast Nginx web server
   frontend:
     build:
@@ -23,6 +35,9 @@ services:
       - "8000:8000"
     env_file:
       - .env
+    depends_on:
+      redis:
+        condition: service_healthy
 
   # The Python Worker executing the Monica AI Engine (LiveKit)
   agent:

@@ -19,25 +19,14 @@ export default function MonicaAvatar({ audioTrack }) {
     const animFrameRef = useRef(null);
 
     useEffect(() => {
-        console.log('MonicaAvatar: useEffect triggered with audioTrack:', audioTrack);
         if (!audioTrack) {
-            console.log('MonicaAvatar: No audioTrack provided.');
             analyserRef.current = null;
             dataArrayRef.current = null;
             return;
         }
         
-        console.log('MonicaAvatar: audioTrack details:', {
-            id: audioTrack.id,
-            kind: audioTrack.kind,
-            label: audioTrack.label,
-            enabled: audioTrack.enabled,
-            readyState: audioTrack.readyState
-        });
-
         try {
             const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            console.log('MonicaAvatar: Created AudioContext, initial state:', audioCtx.state);
             
             const stream = new MediaStream([audioTrack]);
             const source = audioCtx.createMediaStreamSource(stream);
@@ -50,17 +39,11 @@ export default function MonicaAvatar({ audioTrack }) {
             analyserRef.current = analyser;
             dataArrayRef.current = dataArray;
 
-            let lastState = '';
             let wasSpeaking = false;
 
             const checkVolume = () => {
                 if (audioCtx.state === 'suspended') {
-                    audioCtx.resume().catch(err => console.warn('MonicaAvatar: Could not resume AudioContext', err));
-                }
-                
-                if (audioCtx.state !== lastState) {
-                    console.log('MonicaAvatar: AudioContext state is now:', audioCtx.state);
-                    lastState = audioCtx.state;
+                    audioCtx.resume().catch(() => {});
                 }
 
                 if (!analyserRef.current || !dataArrayRef.current) return;
@@ -90,7 +73,6 @@ export default function MonicaAvatar({ audioTrack }) {
                 setVolume(Math.min(totalVol * 3.5, 1)); // Increased gain multiplier for high-contrast waveforms
 
                 if (currentSpeaking && !wasSpeaking) {
-                    console.log('MonicaAvatar: Speaking activity detected! Volume:', totalVol.toFixed(4), 'HighFreq:', volHigh.toFixed(4));
                     wasSpeaking = true;
                 } else if (!currentSpeaking && wasSpeaking) {
                     wasSpeaking = false;
@@ -101,15 +83,14 @@ export default function MonicaAvatar({ audioTrack }) {
             animFrameRef.current = requestAnimationFrame(checkVolume);
 
             return () => {
-                console.log('MonicaAvatar: Cleaning up audio analysis context.');
                 if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
                 source.disconnect();
-                audioCtx.close().catch(err => console.warn('MonicaAvatar: Error closing AudioContext', err));
+                audioCtx.close().catch(() => {});
                 analyserRef.current = null;
                 dataArrayRef.current = null;
             };
-        } catch (e) {
-            console.error('MonicaAvatar: Could not set up audio analysis', e);
+        } catch {
+            // audio analysis unavailable (e.g. browser policy)
         }
     }, [audioTrack]);
 
