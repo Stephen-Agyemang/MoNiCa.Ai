@@ -83,7 +83,7 @@ export function AuthPage({ onOpenLegal }) {
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
 
-  const isSignUp = hash === '#/sign-up';
+  const isSignUp = hash.startsWith('#/sign-up');
 
   return (
     <>
