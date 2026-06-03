@@ -7,3 +7,17 @@ export function apiUrl(path) {
   return `${apiBaseUrl}${normalizedPath}`;
 }
 
+/**
+ * fetch() wrapper that attaches a Clerk session token as a Bearer header.
+ * Pass `getToken` from Clerk's useAuth() hook.
+ */
+export async function authedFetch(url, options = {}, getToken) {
+  const token = await getToken();
+  return fetch(url, {
+    ...options,
+    headers: {
+      ...options.headers,
+      Authorization: `Bearer ${token}`,
+    },
+  });
+}

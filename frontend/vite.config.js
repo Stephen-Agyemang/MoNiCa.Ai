@@ -21,5 +21,19 @@ export default defineConfig({
       'remark-gfm'
     ],
     exclude: ['pdfjs-dist']
-  }
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('@vladmandic/face-api'))                                      return 'vendor-face-api';
+          if (id.includes('@livekit/components-react') || id.includes('livekit-client')) return 'vendor-livekit';
+          if (id.includes('@clerk/clerk-react'))                                         return 'vendor-clerk';
+          if (id.includes('react-markdown') || id.includes('rehype-raw') || id.includes('remark-gfm')) return 'vendor-markdown';
+          if (id.includes('framer-motion'))                                              return 'vendor-motion';
+          if (id.includes('/node_modules/react/') || id.includes('/node_modules/react-dom/')) return 'vendor-react';
+        },
+      },
+    },
+  },
 })

@@ -3,10 +3,10 @@ import { generateReportPDF } from '../lib/pdfGenerator';
 import { ProfessionalMetricChart } from '../components/data-display/ProfessionalMetricChart';
 import { LandingFooter } from '../components/layout/LandingFooter';
 import { useAuth } from '@clerk/clerk-react';
-import { apiUrl } from '../lib/api';
+import { apiUrl, authedFetch } from '../lib/api';
 
 export function ReportView({ onOpenLegal }) {
-  const { isSignedIn, isLoaded } = useAuth();
+  const { isSignedIn, isLoaded, getToken } = useAuth();
   const [report, setReport] = useState(null);
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -41,11 +41,11 @@ export function ReportView({ onOpenLegal }) {
     const newState = !isPublished;
     setIsPublishing(true);
     try {
-      const res = await fetch(apiUrl(`/publish-report/${room}`), {
+      const res = await authedFetch(apiUrl(`/publish-report/${room}`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ published: newState }),
-      });
+      }, getToken);
       if (res.ok) setIsPublished(newState);
     } catch (err) {
       console.error('Failed to update privacy settings:', err);

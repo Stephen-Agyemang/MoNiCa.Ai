@@ -1,8 +1,9 @@
 import os
+import base64
 import logging
 from uuid import uuid4
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from livekit import api
 from dotenv import load_dotenv
@@ -10,8 +11,48 @@ import time
 from fastapi.responses import JSONResponse
 import redis.asyncio as aioredis
 import httpx
+import jwt as pyjwt
+from jwt import PyJWKClient
 
 load_dotenv()
+
+# ── Clerk JWT Auth ────────────────────────────────────────────────────────────
+def _jwks_url_from_publishable_key(pk: str) -> str:
+    """Derive the Clerk JWKS URL from the publishable key (pk_test_... / pk_live_...)."""
+    try:
+        b64 = pk.split("_")[2]
+        b64 += "=" * (-len(b64) % 4)
+        domain = base64.b64decode(b64).decode().rstrip("$")
+        return f"https://{domain}/.well-known/jwks.json"
+    except Exception:
+        return ""
+
+_CLERK_JWKS_URL = os.getenv("CLERK_JWKS_URL") or _jwks_url_from_publishable_key(
+    os.getenv("VITE_CLERK_PUBLISHABLE_KEY", "")
+)
+_jwks_client: PyJWKClient | None = PyJWKClient(_CLERK_JWKS_URL, cache_keys=True) if _CLERK_JWKS_URL else None
+
+async def require_auth(request: Request) -> str:
+    """FastAPI dependency — validates a Clerk session token, returns the Clerk user ID."""
+    if _jwks_client is None:
+        raise HTTPException(status_code=503, detail="Authentication service not configured.")
+    auth = request.headers.get("Authorization", "")
+    if not auth.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing authorization token.")
+    token = auth[7:]
+    try:
+        signing_key = _jwks_client.get_signing_key_from_jwt(token)
+        payload = pyjwt.decode(
+            token, signing_key.key, algorithms=["RS256"],
+            options={"verify_aud": False},
+        )
+        return payload["sub"]
+    except pyjwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Session token has expired.")
+    except Exception as e:
+        logging.getLogger("monica-token-server").warning(f"Token verification failed: {e}")
+        raise HTTPException(status_code=401, detail="Invalid session token.")
+# ─────────────────────────────────────────────────────────────────────────────
 
 REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379")
 
@@ -179,7 +220,7 @@ async def get_token(room: str | None = None, role: str = "Candidate", metadata: 
     return {"token": token.to_jwt(), "url": LIVEKIT_URL, "room_name": room}
 
 @app.get("/recruiter-token")
-async def get_recruiter_token(room: str):
+async def get_recruiter_token(room: str, _user_id: str = Depends(require_auth)):
     """Generates a view-only LiveKit Access Token for a recruiter to silently observe."""
     if not LIVEKIT_API_KEY or not LIVEKIT_API_SECRET:
         raise HTTPException(status_code=500, detail="Missing LiveKit API Keys in .env")
@@ -232,7 +273,7 @@ async def get_report(room_name: str, secret: str | None = None):
         logger.error(f"Failed to fetch report for {room_name}: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch report data.")
 @app.get("/published-sessions")
-async def get_published_sessions():
+async def get_published_sessions(_user_id: str = Depends(require_auth)):
     """Recruiter Portal Endpoint: Returns only candidate-approved sessions."""
     try:
         rows = database.get_published_sessions()
@@ -251,7 +292,7 @@ async def get_published_sessions():
         raise HTTPException(status_code=500, detail="Failed to load recruiter dashboard.")
 
 @app.post("/publish-report/{room_name}")
-async def publish_report(room_name: str, payload: dict):
+async def publish_report(room_name: str, payload: dict, _user_id: str = Depends(require_auth)):
     """Candidate Opt-In: Explicitly share or hide a report from recruiters."""
     published = payload.get("published", False)
     try:

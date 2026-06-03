@@ -1,15 +1,16 @@
 import { useState, useEffect } from 'react';
-import { UserButton } from '@clerk/clerk-react';
+import { UserButton, useAuth } from '@clerk/clerk-react';
 import { LandingFooter } from '../components/layout/LandingFooter';
 import { MonicaPresenceCard } from '../components/ui/MonicaPresenceCard';
-import { apiUrl } from '../lib/api';
+import { apiUrl, authedFetch } from '../lib/api';
 
 export function RecruiterPortal({ onOpenLegal }) {
+  const { getToken } = useAuth();
   const [sessions, setSessions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    fetch(apiUrl('/published-sessions'))
+    authedFetch(apiUrl('/published-sessions'), {}, getToken)
       .then(res => res.json())
       .then(data => { setSessions(data); setIsLoading(false); })
       .catch(err => { console.error('Recruiter Portal Error:', err); setIsLoading(false); });
