@@ -13,128 +13,19 @@ if (!PUBLISHABLE_KEY) {
 
 const clerkAppearance = {
   variables: {
-    colorPrimary: '#82b342', // Signature Monica Green
+    colorPrimary: '#82b342',
     colorText: '#ffffff',
     colorTextSecondary: 'rgba(255, 255, 255, 0.6)',
-    colorBackground: 'rgba(255, 255, 255, 0.1)', // Lighter Clerk base
-    colorInputBackground: 'rgba(255, 255, 255, 0.05)',
+    colorInputBackground: 'rgba(255, 255, 255, 0.07)',
     colorInputText: '#ffffff',
     fontFamily: "'Inter', sans-serif",
-    borderRadius: '16px',
+    borderRadius: '12px',
   },
   elements: {
-    dividerRow: { 
-      display: 'none !important', // THIS IS WHAT KILLS THE "or" TEXT
-    },
-    rootBox: {
-      background: 'transparent !important',
-    },
-    cardBox: {
-      background: 'transparent !important',
-      boxShadow: 'none !important',
-    },
-    clerkBranding: {
-      display: 'none !important',
-    },
-    'div[class*="clerk-internal"]': {
-      display: 'none !important',
-    },
-    card: {
-      background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.45) 0%, rgba(255, 255, 255, 0.15) 100%) !important', // Beautiful subtle diagonal light wash
-      backdropFilter: 'blur(40px) !important',
-      WebkitBackdropFilter: 'blur(40px) !important',
-      border: '1px solid rgba(255, 255, 255, 0.2) !important', // High-Contrast Tech Border
-      boxShadow: `
-        0 40px 100px -20px rgba(0, 0, 0, 0.5),
-        0 0 1px 1px rgba(255, 255, 255, 0.05) inset
-      !important`,
-      width: '100% !important',
-      maxWidth: '480px !important',
-      padding: '48px 32px !important',
-      margin: '0 auto !important',
-    },
-    headerTitle: {
-      color: '#ffffff !important',
-      fontSize: '28px !important',
-      fontWeight: '800 !important',
-      letterSpacing: '-0.03em !important',
-    },
-    headerSubtitle: {
-      color: 'rgba(255,255,255,0.5) !important',
-      fontSize: '15px !important',
-    },
-    socialButtonsBlockButton: {
-      background: 'rgba(0, 0, 0, 0.15) !important', // Subtle dark punch on light glass
-      border: '1px solid rgba(255,255,255,0.1) !important',
-      borderRadius: '12px !important',
-      padding: '12px !important',
-      color: '#ffffff !important',
-      boxShadow: 'none !important',
-      transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important',
-      '&:hover': {
-        background: 'rgba(255, 255, 255, 0.06) !important',
-        borderColor: 'rgba(255,255,255,0.15) !important',
-        transform: 'translateY(-2px) !important',
-      },
-      '&:active': {
-        transform: 'scale(0.98) !important',
-      }
-    },
-    socialButtonsBlockButtonText: {
-      color: '#ffffff !important',
-      fontWeight: '600 !important',
-    },
-    formButtonPrimary: {
-      background: 'linear-gradient(135deg, #d4f2aa 0%, #C5E898 100%) !important', // Lush dimensional green glow
-      color: '#05070a !important', // High Contrast Ink
-      fontSize: '15px !important',
-      fontWeight: '700 !important',
-      padding: '14px !important',
-      borderRadius: '12px !important',
-      textTransform: 'none !important',
-      transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important',
-      '&:hover': {
-        background: 'linear-gradient(135deg, #e2f8c0 0%, #d4f2aa 100%) !important', // Brighter hover gradient
-        transform: 'translateY(-2px) !important',
-        boxShadow: '0 10px 25px rgba(197, 232, 152, 0.25) !important',
-      },
-      '&:active': {
-        transform: 'scale(0.98) !important',
-      }
-    },
-    formFieldLabel: {
-      color: 'rgba(255,255,255,0.6) !important',
-      fontSize: '13px !important',
-      fontWeight: '500 !important',
-    },
-    formFieldInput: {
-      background: 'rgba(255, 255, 255, 0.03) !important',
-      border: '1px solid rgba(255,255,255,0.08) !important',
-      padding: '12px 16px !important',
-      color: '#ffffff !important',
-      borderRadius: '12px !important',
-      '&:focus': {
-        borderColor: 'rgba(197, 232, 152, 0.4) !important',
-        background: 'rgba(255, 255, 255, 0.05) !important',
-      }
-    },
-    footerActionText: {
-      color: 'rgba(0, 0, 0, 0.5) !important', // Dark contrast on light glass
-    },
-    footerActionLink: {
-      color: '#558b2f !important', // Deeper green for readability
-      fontWeight: '700 !important',
-      '&:hover': {
-        color: '#33691e !important',
-      }
-    },
-    'button[tabindex="-1"]': {
-      display: 'none !important',
-    },
-    '[class^="cl-internal"]': {
-      display: 'none !important',
-    },
-  }
+    rootBox: { background: 'transparent' },
+    cardBox: { background: 'transparent', boxShadow: 'none' },
+    clerkBranding: { display: 'none' },
+  },
 };
 
 createRoot(document.getElementById('root')).render(

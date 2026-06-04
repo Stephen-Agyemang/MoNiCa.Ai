@@ -17,60 +17,78 @@ function DataMetric({ value, label, icon: Icon }) {
 }
 
 const CLERK_APPEARANCE = {
-  layout: { socialButtonsPlacement: 'bottom', logoPlacement: 'none' },
+  layout: { socialButtonsPlacement: 'bottom', socialButtonsVariant: 'blockButton', logoPlacement: 'none' },
   variables: {
     colorPrimary: '#82b342',
     colorBackground: 'transparent',
-    colorInputBackground: 'rgba(255, 255, 255, 0.05)',
+    colorInputBackground: 'rgba(255, 255, 255, 0.07)',
     colorInputText: '#ffffff',
     colorText: '#ffffff',
-    colorTextSecondary: 'rgba(255, 255, 255, 0.7)',
+    colorTextSecondary: 'rgba(255, 255, 255, 0.55)',
     colorAlphaShade: 'white',
-    borderRadius: '24px',
+    borderRadius: '12px',
     fontFamily: '"Inter", sans-serif',
   },
   elements: {
     cardBox: {
-      background: 'rgba(15, 20, 25, 0.75)',
-      backdropFilter: 'blur(30px)',
+      background: 'rgba(255, 255, 255, 0.04)',
+      backdropFilter: 'blur(48px)',
+      WebkitBackdropFilter: 'blur(48px)',
       border: '1px solid rgba(255,255,255,0.1)',
-      boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+      boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.1), 0 48px 96px -24px rgba(0,0,0,0.7)',
+      borderRadius: '24px',
     },
-    card: { background: 'transparent', boxShadow: 'none', border: 'none', padding: '0' },
+    card: { background: 'transparent', boxShadow: 'none', border: 'none', padding: '36px 32px' },
     headerTitle: { display: 'none' },
     headerSubtitle: { display: 'none' },
-    footer: {
-      background: 'rgba(255, 255, 255, 0.02)',
-      padding: '24px 0',
-      borderTop: '1px solid rgba(255,255,255,0.05)',
+    // Hide Clerk's built-in footer — we render our own toggle below the card
+    footer: { display: 'none' },
+    socialButtonsRoot: { width: '100%' },
+    socialButtons: {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '8px',
+      width: '100%',
     },
     socialButtonsBlockButton: {
-      borderRadius: '999px',
-      border: '1px solid rgba(255,255,255,0.15)',
-      background: 'rgba(255,255,255,0.05)',
+      borderRadius: '10px',
+      border: '1px solid rgba(255,255,255,0.18)',
+      background: 'rgba(255,255,255,0.08)',
       color: '#ffffff',
-      transition: 'transform 0.1s ease, opacity 0.1s ease, background 0.15s ease',
+      height: '44px',
+      fontSize: '14px',
+      transition: 'background 0.15s ease, border-color 0.15s ease',
     },
-    socialButtonsBlockButtonText: { color: '#ffffff', fontWeight: '600' },
+    socialButtonsBlockButtonText: { color: '#ffffff', fontWeight: '600', fontSize: '14px' },
+    socialButtonsBlockButtonArrow: { color: 'rgba(255,255,255,0.5)' },
     formButtonPrimary: {
-      backgroundColor: 'var(--accent)',
-      color: '#000000',
+      background: 'linear-gradient(135deg, #a8e05a 0%, #82b342 100%)',
+      color: '#03070a',
       fontWeight: '800',
-      borderRadius: '999px',
-      boxShadow: '0 4px 15px rgba(130, 179, 66, 0.25)',
-      transition: 'all 0.2s',
+      borderRadius: '10px',
+      letterSpacing: '0.02em',
+      boxShadow: '0 4px 24px rgba(130,179,66,0.45), inset 0 1px 0 rgba(255,255,255,0.25)',
+      transition: 'transform 0.15s ease, box-shadow 0.15s ease',
     },
     formFieldInput: {
-      borderRadius: '12px',
-      borderColor: 'rgba(255,255,255,0.15)',
-      background: 'rgba(255,255,255,0.05)',
+      borderRadius: '10px',
+      border: '1.5px solid rgba(255,255,255,0.12)',
+      background: 'rgba(255,255,255,0.06)',
       color: '#ffffff',
+      transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
     },
-    formFieldLabel: { color: 'rgba(255,255,255,0.9)' },
-    footerActionText: { color: 'rgba(255, 255, 255, 0.9) !important' },
-    footerActionLink: { color: 'var(--accent) !important', fontWeight: '700' },
-    dividerLine: { background: 'rgba(255, 255, 255, 0.1) !important' },
-    dividerText: { color: 'rgba(255, 255, 255, 0.7) !important' },
+    formFieldLabel: { color: 'rgba(255,255,255,0.75)', fontWeight: '500' },
+    dividerLine: { background: 'rgba(255,255,255,0.1)' },
+    dividerText: { color: 'rgba(255,255,255,0.45)' },
+    identityPreviewText: { color: '#ffffff' },
+    identityPreviewEditButtonIcon: { color: 'rgba(255,255,255,0.6)' },
+    formResendCodeLink: { color: '#82b342' },
+    otpCodeFieldInput: {
+      border: '1.5px solid rgba(255,255,255,0.15)',
+      background: 'rgba(255,255,255,0.07)',
+      color: '#ffffff',
+      borderRadius: '10px',
+    },
   },
 };
 
@@ -83,7 +101,8 @@ export function AuthPage({ onOpenLegal }) {
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
 
-  const isSignUp = hash.startsWith('#/sign-up');
+  // '#signup' is our toggle hash; '#/sign-up*' are Clerk's internal multi-step sub-paths
+  const isSignUp = hash === '#signup' || hash.startsWith('#/sign-up');
 
   return (
     <>
@@ -100,22 +119,48 @@ export function AuthPage({ onOpenLegal }) {
           <h1 id="hero-section" className="brand-text-gradient" style={{ fontSize: '72px', margin: 0 }}>
             Mon<span className="brand-i-container">i<span className="brand-i-dot-highlight"></span></span>ca<span className="brand-dot-end">.</span>
           </h1>
-          <p style={{ fontSize: '18px', color: 'rgba(255,255,255,0.7)', marginTop: '8px', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+          <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.45)', marginTop: '12px', fontWeight: 700, letterSpacing: '0.3em', textTransform: 'uppercase' }}>
             AI Interview Coach
           </p>
         </div>
 
         {/*
-          Both SignIn and SignUp are always mounted — mounting both avoids the
-          Clerk re-initialization delay that occurs when conditionally unmounting
-          one and mounting the other. CSS visibility toggles between them instantly.
+          Only the active component is mounted. With Clerk v5, re-initialization is
+          cached at the ClerkProvider level so the switch is fast. Conditional mounting
+          also prevents the hidden <SignIn> from seeing Clerk's #/sign-up hash and
+          redirecting to the Account Portal.
         */}
         <div className="fancy-auth-wrapper">
-          <div style={{ display: isSignUp ? 'none' : 'block', width: '100%' }}>
-            <SignIn routing="hash" appearance={CLERK_APPEARANCE} />
-          </div>
-          <div style={{ display: isSignUp ? 'block' : 'none', width: '100%' }}>
+          {isSignUp ? (
             <SignUp routing="hash" appearance={CLERK_APPEARANCE} />
+          ) : (
+            <SignIn routing="hash" appearance={CLERK_APPEARANCE} />
+          )}
+          {/* Custom footer toggle — replaces Clerk's built-in footer links */}
+          <div style={{ marginTop: '16px', textAlign: 'center', padding: '16px 0', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+            {isSignUp ? (
+              <p style={{ margin: 0, fontSize: '14px', color: 'rgba(255,255,255,0.55)' }}>
+                Already have an account?{' '}
+                <a
+                  href="/"
+                  onClick={e => { e.preventDefault(); window.location.hash = ''; }}
+                  style={{ color: '#82b342', fontWeight: 700, textDecoration: 'none' }}
+                >
+                  Sign in
+                </a>
+              </p>
+            ) : (
+              <p style={{ margin: 0, fontSize: '14px', color: 'rgba(255,255,255,0.55)' }}>
+                Don&apos;t have an account?{' '}
+                <a
+                  href="/#signup"
+                  onClick={e => { e.preventDefault(); window.location.hash = '#signup'; }}
+                  style={{ color: '#82b342', fontWeight: 700, textDecoration: 'none' }}
+                >
+                  Sign up
+                </a>
+              </p>
+            )}
           </div>
         </div>
 

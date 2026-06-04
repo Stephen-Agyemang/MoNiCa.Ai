@@ -316,11 +316,11 @@ html {
 }
 
 .brand-text-gradient {
-  background: linear-gradient(135deg, #ffffff 0%, #94a3b8 100%);
+  background: linear-gradient(160deg, #ffffff 0%, #e2e8f0 60%, #c8d6c2 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0 0 15px rgba(255, 255, 255, 0.15));
+  filter: drop-shadow(0 2px 24px rgba(130, 179, 66, 0.2)) drop-shadow(0 0 4px rgba(255,255,255,0.08));
   letter-spacing: -0.04em;
   font-weight: 900;
   display: inline-flex;
@@ -378,8 +378,36 @@ html {
   max-width: 480px;
   margin: 0 auto;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
   align-items: center;
+  animation: authCardEntrance 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes authCardEntrance {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Green top-edge accent on the Clerk card */
+.cl-cardBox {
+  position: relative;
+  overflow: hidden;
+}
+.cl-cardBox::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 15%;
+  right: 15%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(130, 179, 66, 0.55), transparent);
+  z-index: 1;
 }
 
 /* Auth Portal Footer Styling */
@@ -470,11 +498,8 @@ html {
   }
 }
 
-/* Global Clerk Overrides to fix visibility and hide dev mode */
-.cl-internal-1fpq5at,
-.cl-internal-11v044t,
-[class^="cl-internal"],
-[class*="clerk-internal"],
+/* Hide Clerk dev mode badge only — do NOT target cl-internal-* classes,
+   those are Clerk v5 form step containers that must remain visible */
 .cl-dev-badge,
 .cl-dev-badge-container {
   display: none !important;
@@ -608,35 +633,37 @@ html {
   right: 0;
   bottom: 0;
   z-index: 1;
-  background: radial-gradient(circle at 50% -20%, rgba(109, 139, 116, 0.15), transparent 70%);
+  background:
+    radial-gradient(ellipse at 20% 0%, rgba(130, 179, 66, 0.18) 0%, transparent 55%),
+    radial-gradient(ellipse at 80% 100%, rgba(74, 124, 31, 0.12) 0%, transparent 50%);
   pointer-events: none;
 }
 
 .mesh-glow-sphere {
   position: absolute;
   border-radius: 50%;
-  filter: blur(120px);
-  opacity: 0.7;
-  /* Increased opacity for more "pop" */
+  filter: blur(130px);
   z-index: 2;
   pointer-events: none;
 }
 
 .sphere-1 {
-  width: 600px;
-  height: 600px;
-  background: #6D8B74;
-  top: -200px;
-  left: -200px;
-  animation: orbitalFloat 20s ease-in-out infinite;
+  width: 700px;
+  height: 700px;
+  background: #82b342;
+  opacity: 0.35;
+  top: -280px;
+  left: -220px;
+  animation: orbitalFloat 22s ease-in-out infinite;
 }
 
 .sphere-2 {
-  width: 500px;
-  height: 500px;
-  background: #4a7c1f;
-  bottom: -150px;
-  right: -100px;
+  width: 550px;
+  height: 550px;
+  background: #2d6e14;
+  opacity: 0.45;
+  bottom: -180px;
+  right: -120px;
   animation: orbitalFloat 18s ease-in-out infinite reverse;
 }
 
@@ -1246,9 +1273,22 @@ html {
   pointer-events: none !important;
 }
 
-/* Also improve the primary form submit button */
+/* Input focus — green ring */
+.cl-formFieldInput:focus {
+  border-color: rgba(130, 179, 66, 0.55) !important;
+  box-shadow: 0 0 0 3px rgba(130, 179, 66, 0.12) !important;
+  background: rgba(255, 255, 255, 0.09) !important;
+  outline: none !important;
+}
+
+/* Primary button hover lift + glow boost */
 .cl-formButtonPrimary {
-  transition: transform 0.15s ease, box-shadow 0.15s ease !important;
+  transition: transform 0.18s ease, box-shadow 0.18s ease !important;
+}
+
+.cl-formButtonPrimary:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 8px 32px rgba(130, 179, 66, 0.55), inset 0 1px 0 rgba(255,255,255,0.25) !important;
 }
 
 .cl-formButtonPrimary:active {
