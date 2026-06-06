@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { VideoTrack, AudioTrack } from '@livekit/components-react';
 import InductionOverlay from './InductionOverlay';
 import TavusPlayer from './TavusPlayer';
 import EmotionHUD from './EmotionHUD';
+import TranscriptPanel from './TranscriptPanel';
 
 export default function GeneralLayout({
   role, company, mode,
@@ -11,7 +12,20 @@ export default function GeneralLayout({
   agentVideoTrack, agentAudioTrack,
   isLoaded, emotions,
   liveGrade,
+  transcriptEntries, sessionStartTime,
+  isTranscriptionSupported,
+  getLiveWpm, getLiveFillerCount,
+  isRecording,
 }) {
+  const [showTranscript, setShowTranscript] = useState(true);
+
+  const composureScore = emotions.length > 0
+    ? Math.round(
+        emotions.slice(-20).filter(e => ['neutral', 'happy', 'surprised'].includes(e.emotion)).length /
+        Math.min(emotions.length, 20) * 100
+      )
+    : null;
+
   return (
     <div className="auth-page-container" style={{ height: '100%', minHeight: 0, maxHeight: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
       {showOverlay && <InductionOverlay show={showOverlay} fadeOut={isOverlayFadingOut} />}
@@ -110,6 +124,31 @@ export default function GeneralLayout({
               </div>
             </div>
           </div>
+
+          {/* Recording indicator */}
+          {isRecording && (
+            <div style={{
+              position: 'absolute',
+              top: '16px',
+              right: '16px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              background: 'rgba(15, 20, 25, 0.65)',
+              padding: '6px 12px',
+              borderRadius: '100px',
+              backdropFilter: 'blur(8px)',
+              border: '1px solid rgba(255,255,255,0.08)',
+              zIndex: 10,
+            }}>
+              <div style={{
+                width: '7px', height: '7px', borderRadius: '50%', background: '#ef4444',
+                boxShadow: '0 0 8px #ef4444',
+                animation: 'soft-pulse 1.5s ease-in-out infinite',
+              }} />
+              <span style={{ fontSize: '10px', fontWeight: 700, color: '#ffffff', letterSpacing: '0.08em', textTransform: 'uppercase' }}>REC</span>
+            </div>
+          )}
         </div>
 
         {/* Side Panel */}
@@ -121,10 +160,12 @@ export default function GeneralLayout({
           flexDirection: 'column',
           gap: '12px',
           flexShrink: 0,
+          minHeight: 0,
+          overflow: 'hidden',
         }}>
           {/* Self View */}
           <div style={{
-            height: '180px',
+            height: '160px',
             flexShrink: 0,
             borderRadius: 'var(--radius-md)',
             overflow: 'hidden',
@@ -135,12 +176,7 @@ export default function GeneralLayout({
             {localTrack && (
               <VideoTrack
                 trackRef={localTrack}
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover',
-                  transform: 'scaleX(-1)',
-                }}
+                style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }}
               />
             )}
             <EmotionHUD isLoaded={isLoaded} emotions={emotions} />
@@ -148,105 +184,93 @@ export default function GeneralLayout({
 
           {agentAudioTrack && !agentVideoTrack && <AudioTrack trackRef={agentAudioTrack} />}
 
-          {/* Interview Info Card */}
+          {/* Session Info + Engagement Card */}
+          <div className="settings-card" style={{
+            padding: '14px 16px',
+            display: 'flex',
+            flexDirection: 'column',
+            margin: 0,
+            flexShrink: 0,
+          }}>
+            <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.15em' }}>
+              Current Session
+            </span>
+            <h3 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-heading)', margin: '6px 0 2px', lineHeight: 1.3 }}>
+              {role}
+            </h3>
+            {company && (
+              <p style={{ fontSize: '13px', color: 'rgba(255, 255, 255, 0.6)', margin: '0 0 8px' }}>at {company}</p>
+            )}
+            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '10px' }}>
+              <span style={{ fontSize: '10px', fontWeight: 600, padding: '3px 10px', borderRadius: 'var(--radius-pill)', background: 'var(--accent-subtle)', color: '#4a7c1f', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                {mode} Phase
+              </span>
+              {liveGrade !== null && (
+                <span style={{ fontSize: '10px', fontWeight: 600, padding: '3px 10px', borderRadius: 'var(--radius-pill)', background: 'rgba(56,189,248,0.1)', color: '#0284c7', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                  Live Grade: {liveGrade}/100
+                </span>
+              )}
+            </div>
+
+            {/* Engagement metrics row */}
+            <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '10px', display: 'flex', gap: '16px' }}>
+              <div style={{ flex: 1 }}>
+                <span style={{ fontSize: '9px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>WPM</span>
+                <div style={{ fontSize: '18px', fontWeight: 800, color: '#93c5fd', lineHeight: 1.2 }}>
+                  {getLiveWpm()}
+                </div>
+              </div>
+              {composureScore !== null && (
+                <div style={{ flex: 1 }}>
+                  <span style={{ fontSize: '9px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Composure</span>
+                  <div style={{ fontSize: '18px', fontWeight: 800, color: composureScore >= 70 ? '#4ade80' : composureScore >= 40 ? '#fbbf24' : '#f87171', lineHeight: 1.2 }}>
+                    {composureScore}%
+                  </div>
+                </div>
+              )}
+              <div style={{ flex: 1 }}>
+                <span style={{ fontSize: '9px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Fillers</span>
+                <div style={{ fontSize: '18px', fontWeight: 800, color: getLiveFillerCount() > 10 ? '#f87171' : 'rgba(255,255,255,0.7)', lineHeight: 1.2 }}>
+                  {getLiveFillerCount()}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Live Transcript Card */}
           <div className="settings-card" style={{
             flex: 1,
-            padding: '16px',
+            padding: '14px 16px',
             display: 'flex',
             flexDirection: 'column',
             margin: 0,
             minHeight: 0,
-            overflow: 'hidden'
+            overflow: 'hidden',
           }}>
-            <div style={{ marginBottom: 'auto' }}>
-              <span style={{
-                fontSize: '10px',
-                fontWeight: 700,
-                color: 'var(--text-muted)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.15em',
-              }}>
-                Current Session
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', flexShrink: 0 }}>
+              <button
+                onClick={() => setShowTranscript(v => !v)}
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  fontSize: '9px', fontWeight: 700, color: 'var(--text-muted)',
+                  textTransform: 'uppercase', letterSpacing: '0.15em',
+                  display: 'flex', alignItems: 'center', gap: '4px', padding: 0,
+                }}
+              >
+                Transcript {showTranscript ? '▾' : '▸'}
+              </button>
+              <span style={{ fontSize: '9px', color: 'rgba(255,255,255,0.25)', fontWeight: 500 }}>
+                {transcriptEntries.filter(e => e.isFinal).length} entries
               </span>
-              <h3 style={{
-                fontSize: '20px',
-                fontWeight: 700,
-                color: 'var(--text-heading)',
-                margin: '8px 0 4px',
-                lineHeight: 1.3,
-              }}>
-                {role}
-              </h3>
-              {company && (
-                <p style={{
-                  fontSize: '14px',
-                  color: 'rgba(255, 255, 255, 0.6)',
-                  margin: 0,
-                }}>
-                  at {company}
-                </p>
-              )}
-              <div style={{ marginTop: '12px', display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                <span style={{
-                  fontSize: '10px',
-                  fontWeight: 600,
-                  padding: '4px 10px',
-                  borderRadius: 'var(--radius-pill)',
-                  background: 'var(--accent-subtle)',
-                  color: '#4a7c1f',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.08em',
-                }}>
-                  {mode} Phase
-                </span>
-                {liveGrade !== null && (
-                  <span style={{
-                    fontSize: '10px',
-                    fontWeight: 600,
-                    padding: '4px 10px',
-                    borderRadius: 'var(--radius-pill)',
-                    background: 'rgba(56,189,248,0.1)',
-                    color: '#0284c7',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.08em',
-                  }}>
-                    Live Grade: {liveGrade}/100
-                  </span>
-                )}
-              </div>
             </div>
-
-            <div style={{
-              paddingTop: '16px',
-              borderTop: '1px solid rgba(255,255,255,0.05)',
-              marginTop: '8px',
-            }}>
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                padding: '8px 0',
-              }}>
-                <span style={{ fontSize: '11px', color: 'rgba(0,0,0,0.4)', fontWeight: 500 }}>Status</span>
-                <span style={{
-                  fontSize: '11px',
-                  fontWeight: 600,
-                  color: '#16a34a',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                }}>
-                  <span className="animate-soft-pulse" style={{
-                    width: '6px',
-                    height: '6px',
-                    borderRadius: '50%',
-                    background: '#16a34a',
-                    display: 'inline-block',
-                  }} />
-                  Active
-                </span>
-              </div>
-            </div>
+            {showTranscript && (
+              <TranscriptPanel
+                entries={transcriptEntries}
+                sessionStartTime={sessionStartTime}
+                isSupported={isTranscriptionSupported}
+                compact
+              />
+            )}
           </div>
         </div>
       </div>

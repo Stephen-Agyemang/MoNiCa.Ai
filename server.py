@@ -199,7 +199,8 @@ async def get_token(room: str | None = None, role: str = "Candidate", metadata: 
     # Initialize the interview transcript record in SQLite
     try:
         user_id = m_dict.get("userId")
-        database.create_session(room, role, company_name, interview_mode, user_id=user_id)
+        username = m_dict.get("userName")
+        database.create_session(room, role, company_name, interview_mode, user_id=user_id, username=username)
     except Exception as e:
         logger.error(f"Failed to create DB session: {e}")
     
@@ -267,7 +268,8 @@ async def get_report(room_name: str, secret: str | None = None):
             "score": row[5],
             "feedback": json.loads(row[6]) if row[6] else None,
             "isPublished": bool(row[7]),
-            "createdAt": row[8].isoformat() if hasattr(row[8], 'isoformat') else str(row[8])
+            "createdAt": row[8].isoformat() if hasattr(row[8], 'isoformat') else str(row[8]),
+            "username": row[9],
         }
     except Exception as e:
         logger.error(f"Failed to fetch report for {room_name}: {e}")

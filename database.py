@@ -43,7 +43,8 @@ def init_db():
             feedback_json TEXT,
             is_published INTEGER DEFAULT 0,
             user_id TEXT,
-            created_at TIMESTAMP
+            created_at TIMESTAMP,
+            username TEXT
         )
     ''')
     
@@ -77,14 +78,14 @@ def init_db():
 def _get_placeholder():
     return "%s" if HAS_POSTGRES and SUPABASE_URL else "?"
 
-def create_session(room_name, role, company, mode, user_id=None):
+def create_session(room_name, role, company, mode, user_id=None, username=None):
     conn = get_connection()
     cursor = conn.cursor()
     p = _get_placeholder()
     cursor.execute(f'''
-        INSERT INTO interview_sessions (id, role, company, mode, user_id, transcript, code_submissions, created_at)
-        VALUES ({p}, {p}, {p}, {p}, {p}, {p}, {p}, {p})
-    ''', (room_name, role, company, mode, user_id, '[]', '[]', datetime.now()))
+        INSERT INTO interview_sessions (id, role, company, mode, user_id, username, transcript, code_submissions, created_at)
+        VALUES ({p}, {p}, {p}, {p}, {p}, {p}, {p}, {p}, {p})
+    ''', (room_name, role, company, mode, user_id, username, '[]', '[]', datetime.now()))
     conn.commit()
     conn.close()
 
@@ -199,7 +200,7 @@ def get_session_data(session_id: str):
     cursor = conn.cursor()
     p = _get_placeholder()
     cursor.execute(f'''
-        SELECT role, company, mode, transcript, code_submissions, score, feedback_json, is_published, created_at
+        SELECT role, company, mode, transcript, code_submissions, score, feedback_json, is_published, created_at, username
         FROM interview_sessions
         WHERE id = {p}
     ''', (session_id,))

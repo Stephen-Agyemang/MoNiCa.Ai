@@ -1,9 +1,68 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { generateReportPDF } from '../lib/pdfGenerator';
 import { ProfessionalMetricChart } from '../components/data-display/ProfessionalMetricChart';
 import { LandingFooter } from '../components/layout/LandingFooter';
 import { useAuth } from '@clerk/clerk-react';
 import { apiUrl, authedFetch } from '../lib/api';
+import { loadSession } from '../lib/sessionStorage';
+
+const CODING_KEYWORDS = ['software', 'developer', 'engineer', 'programmer', 'swe', 'frontend', 'backend', 'fullstack', 'full-stack', 'devops', 'data scientist', 'data engineer', 'ml engineer', 'machine learning', 'web dev', 'ios', 'android', 'mobile dev'];
+
+function formatTimestamp(ts, startTime) {
+  if (!startTime) return '';
+  const secs = Math.floor((ts - startTime) / 1000);
+  const m = Math.floor(secs / 60).toString().padStart(2, '0');
+  const s = (secs % 60).toString().padStart(2, '0');
+  return `${m}:${s}`;
+}
+
+function TranscriptEntry({ entry, startTime, isHighlighted, onClick }) {
+  const isMonica = entry.speaker === 'monica';
+  const timeLabel = formatTimestamp(entry.timestamp, startTime);
+
+  return (
+    <div
+      onClick={onClick}
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '3px',
+        padding: '10px 14px',
+        borderRadius: '10px',
+        background: isHighlighted
+          ? (isMonica ? 'rgba(130,179,66,0.12)' : 'rgba(147,197,253,0.1)')
+          : 'rgba(255,255,255,0.02)',
+        border: isHighlighted
+          ? `1px solid ${isMonica ? 'rgba(130,179,66,0.3)' : 'rgba(147,197,253,0.2)'}`
+          : '1px solid transparent',
+        cursor: onClick ? 'pointer' : 'default',
+        transition: 'all 0.15s',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <span style={{
+          fontSize: '10px', fontWeight: 700, textTransform: 'uppercase',
+          letterSpacing: '0.1em',
+          color: isMonica ? 'var(--accent)' : '#93c5fd',
+        }}>
+          {isMonica ? 'Monica' : 'You'}
+        </span>
+        {timeLabel && (
+          <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)', fontWeight: 500 }}>
+            {timeLabel}
+          </span>
+        )}
+      </div>
+      <p style={{
+        margin: 0, fontSize: '13px',
+        color: isMonica ? 'rgba(255,255,255,0.75)' : 'rgba(255,255,255,0.9)',
+        lineHeight: 1.6, fontWeight: 400,
+      }}>
+        {entry.text}
+      </p>
+    </div>
+  );
+}
 
 export function ReportView({ onOpenLegal }) {
   const { isSignedIn, isLoaded, getToken } = useAuth();
@@ -13,6 +72,13 @@ export function ReportView({ onOpenLegal }) {
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [isPublished, setIsPublished] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
+
+  // Session replay state
+  const [sessionData, setSessionData] = useState(null);
+  const [videoUrl, setVideoUrl] = useState(null);
+  const [activeTranscriptIdx, setActiveTranscriptIdx] = useState(-1);
+  const videoRef = useRef(null);
+
   const room = new URLSearchParams(window.location.search).get('room');
 
   useEffect(() => {
@@ -24,6 +90,44 @@ export function ReportView({ onOpenLegal }) {
       .catch(err => { if (isCancelled) return; setError(err.message); setIsLoading(false); });
     return () => { isCancelled = true; };
   }, [room]);
+
+  // Load session recording + transcript from IndexedDB
+  useEffect(() => {
+    if (!room) return;
+    loadSession(room).then(data => {
+      if (!data) return;
+      setSessionData(data);
+      if (data.videoBlob) {
+        setVideoUrl(URL.createObjectURL(data.videoBlob));
+      }
+    });
+    return () => {
+      if (videoUrl) URL.revokeObjectURL(videoUrl);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [room]);
+
+  // Sync transcript highlight to video playback time
+  const handleTimeUpdate = useCallback(() => {
+    if (!videoRef.current || !sessionData?.transcript || !sessionData?.sessionStartTime) return;
+    const currentMs = sessionData.sessionStartTime + videoRef.current.currentTime * 1000;
+    const finalEntries = sessionData.transcript.filter(e => e.isFinal);
+    let best = -1;
+    for (let i = 0; i < finalEntries.length; i++) {
+      if (finalEntries[i].timestamp <= currentMs) best = i;
+      else break;
+    }
+    setActiveTranscriptIdx(best);
+  }, [sessionData]);
+
+  const seekToEntry = useCallback((entry) => {
+    if (!videoRef.current || !sessionData?.sessionStartTime) return;
+    const secs = (entry.timestamp - sessionData.sessionStartTime) / 1000;
+    if (secs >= 0 && secs <= videoRef.current.duration) {
+      videoRef.current.currentTime = secs;
+      videoRef.current.play();
+    }
+  }, [sessionData]);
 
   const downloadPDF = () => {
     generateReportPDF(
@@ -73,8 +177,7 @@ export function ReportView({ onOpenLegal }) {
     </div>
   );
 
-  const codingKeywords = ['software', 'developer', 'engineer', 'programmer', 'swe', 'frontend', 'backend', 'fullstack', 'full-stack', 'devops', 'data scientist', 'data engineer', 'ml engineer', 'machine learning', 'web dev', 'ios', 'android', 'mobile dev'];
-  const isCoding = report?.role && codingKeywords.some(k => report.role.toLowerCase().includes(k));
+  const isCoding = report?.role && CODING_KEYWORDS.some(k => report.role.toLowerCase().includes(k));
 
   const metricsList = isCoding ? [
     { label: 'Technical Skill',  value: report.feedback?.metrics?.technical     || 0, color: '#82b342' },
@@ -83,14 +186,17 @@ export function ReportView({ onOpenLegal }) {
     { label: 'Code Integrity',   value: report.feedback?.metrics?.code_quality   || 0, color: '#a2d2ff' },
     { label: 'Optimization',     value: report.feedback?.metrics?.optimization   || 0, color: '#ea580c' },
   ] : [
-    { label: 'Domain Knowledge',      value: report.feedback?.metrics?.technical     || 0, color: '#82b342' },
-    { label: 'Situational Judgement', value: report.feedback?.metrics?.problem_solving || 0, color: '#6D8B74' },
-    { label: 'Communication',         value: report.feedback?.metrics?.communication  || 0, color: '#0284c7' },
-    { label: 'Crisis Management',     value: report.feedback?.metrics?.code_quality   || 0, color: '#a2d2ff' },
-    { label: 'Leadership & Initiative', value: report.feedback?.metrics?.optimization || 0, color: '#ea580c' },
+    { label: 'Domain Knowledge',        value: report.feedback?.metrics?.technical      || 0, color: '#82b342' },
+    { label: 'Situational Judgement',   value: report.feedback?.metrics?.problem_solving || 0, color: '#6D8B74' },
+    { label: 'Communication',           value: report.feedback?.metrics?.communication   || 0, color: '#0284c7' },
+    { label: 'Crisis Management',       value: report.feedback?.metrics?.code_quality    || 0, color: '#a2d2ff' },
+    { label: 'Leadership & Initiative', value: report.feedback?.metrics?.optimization    || 0, color: '#ea580c' },
   ];
 
   const pass = (report?.score ?? 0) >= 80;
+  const finalTranscript = sessionData?.transcript?.filter(e => e.isFinal) || [];
+  const hasReplay = !!videoUrl;
+  const hasTranscript = finalTranscript.length > 0;
 
   return (
     <div className="auth-page-container">
@@ -135,16 +241,10 @@ export function ReportView({ onOpenLegal }) {
                 </div>
                 <div>
                   <h3 style={{ margin: 0, fontSize: '16px', color: '#ffffff', fontWeight: 800 }}>Temporary Guest Report</h3>
-                  <p style={{ margin: '4px 0 0', fontSize: '13px', color: 'rgba(255,255,255,0.7)', fontWeight: 500 }}>
-                    Sign up to save this report before it's deleted.
-                  </p>
+                  <p style={{ margin: '4px 0 0', fontSize: '13px', color: 'rgba(255,255,255,0.7)', fontWeight: 500 }}>Sign up to save this report before it's deleted.</p>
                 </div>
               </div>
-              <button
-                onClick={() => window.location.href = '/'}
-                className="btn-cta"
-                style={{ width: 'auto', padding: '12px 28px', borderRadius: '999px', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.05em', flexShrink: 0, zIndex: 1 }}
-              >
+              <button onClick={() => window.location.href = '/'} className="btn-cta" style={{ width: 'auto', padding: '12px 28px', borderRadius: '999px', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.05em', flexShrink: 0, zIndex: 1 }}>
                 Sign Up to Save
               </button>
             </div>
@@ -187,12 +287,7 @@ export function ReportView({ onOpenLegal }) {
               </div>
 
               {/* Download PDF */}
-              <button
-                onClick={downloadPDF}
-                disabled={isGeneratingPDF}
-                className="report-back-btn"
-                style={{ padding: '12px 20px' }}
-              >
+              <button onClick={downloadPDF} disabled={isGeneratingPDF} className="report-back-btn" style={{ padding: '12px 20px' }}>
                 <span>📥</span>
                 <span>{isGeneratingPDF ? 'Generating...' : 'Download PDF'}</span>
               </button>
@@ -259,7 +354,7 @@ export function ReportView({ onOpenLegal }) {
               </div>
             </div>
 
-            {/* Bottom Row — 2 columns */}
+            {/* Strengths + Growth Areas */}
             {report.feedback && (
               <div className="report-grid-2">
                 <div className="glass-panel-dark" style={{ borderLeft: '6px solid var(--accent)', padding: '16px', borderTop: '1px solid var(--border-light)', borderRight: '1px solid var(--border-light)', borderBottom: '1px solid var(--border-light)' }}>
@@ -277,6 +372,132 @@ export function ReportView({ onOpenLegal }) {
                   </div>
                   <p style={{ lineHeight: 1.4, color: 'rgba(255,255,255,0.8)', fontSize: '12px', whiteSpace: 'pre-wrap', fontWeight: 500, margin: 0 }}>{report.feedback.improvements}</p>
                 </div>
+              </div>
+            )}
+
+            {/* Vocal Analytics — shown if we have session data */}
+            {sessionData && (
+              <div className="report-grid-3">
+                <div className="glass-panel-dark" style={{ padding: '16px' }}>
+                  <h3 style={{ fontSize: '12px', color: 'rgba(255,255,255,0.8)', fontWeight: 800, marginBottom: '16px', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Speaking Pace</h3>
+                  <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px', marginBottom: '8px' }}>
+                    <span style={{ fontSize: '48px', fontWeight: 900, color: '#93c5fd', lineHeight: 1 }}>{sessionData.wpm || 0}</span>
+                    <span style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)', fontWeight: 600, marginBottom: '6px' }}>WPM</span>
+                  </div>
+                  <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', margin: 0, lineHeight: 1.5 }}>
+                    {(sessionData.wpm || 0) < 100
+                      ? 'Speaking pace is a bit slow — aim for 120–150 WPM for natural conversation.'
+                      : (sessionData.wpm || 0) > 180
+                        ? 'Speaking pace is fast — slowing down slightly improves clarity.'
+                        : 'Speaking pace is in the optimal range for an interview.'}
+                  </p>
+                </div>
+
+                <div className="glass-panel-dark" style={{ padding: '16px' }}>
+                  <h3 style={{ fontSize: '12px', color: 'rgba(255,255,255,0.8)', fontWeight: 800, marginBottom: '16px', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Filler Words</h3>
+                  <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px', marginBottom: '12px' }}>
+                    <span style={{ fontSize: '48px', fontWeight: 900, color: (sessionData.totalFillers || 0) > 15 ? '#f87171' : '#4ade80', lineHeight: 1 }}>{sessionData.totalFillers || 0}</span>
+                    <span style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)', fontWeight: 600, marginBottom: '6px' }}>total</span>
+                  </div>
+                  {sessionData.fillerWords && Object.keys(sessionData.fillerWords).length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                      {Object.entries(sessionData.fillerWords)
+                        .sort(([, a], [, b]) => b - a)
+                        .slice(0, 5)
+                        .map(([word, count]) => (
+                          <span key={word} style={{
+                            fontSize: '10px', fontWeight: 600, padding: '3px 8px',
+                            borderRadius: 'var(--radius-pill)',
+                            background: 'rgba(255,255,255,0.06)',
+                            color: 'rgba(255,255,255,0.6)',
+                          }}>
+                            "{word}" ×{count}
+                          </span>
+                        ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="glass-panel-dark" style={{ padding: '16px' }}>
+                  <h3 style={{ fontSize: '12px', color: 'rgba(255,255,255,0.8)', fontWeight: 800, marginBottom: '16px', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Session Stats</h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <div className="stat-row">
+                      <span className="stat-label">Total Exchanges</span>
+                      <span className="stat-value">{finalTranscript.length}</span>
+                    </div>
+                    <div className="stat-row">
+                      <span className="stat-label">Your Responses</span>
+                      <span className="stat-value">{finalTranscript.filter(e => e.speaker === 'candidate').length}</span>
+                    </div>
+                    <div className="stat-row">
+                      <span className="stat-label">Monica Questions</span>
+                      <span className="stat-value">{finalTranscript.filter(e => e.speaker === 'monica').length}</span>
+                    </div>
+                    {hasReplay && (
+                      <div className="stat-row">
+                        <span className="stat-label">Recording</span>
+                        <span className="stat-value-accent">SAVED</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Session Replay + Transcript */}
+            {(hasReplay || hasTranscript) && (
+              <div style={{ display: 'grid', gridTemplateColumns: hasReplay ? '1fr 1fr' : '1fr', gap: '12px' }}>
+
+                {/* Video Replay */}
+                {hasReplay && (
+                  <div className="glass-panel-dark" style={{ padding: '16px', display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                      <span style={{ fontSize: '20px' }}>🎬</span>
+                      <h3 style={{ margin: 0, fontSize: '15px', color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 800 }}>Session Replay</h3>
+                      <span style={{ marginLeft: 'auto', fontSize: '9px', fontWeight: 700, background: 'rgba(130,179,66,0.15)', color: 'var(--accent)', padding: '3px 8px', borderRadius: '4px', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Local Only</span>
+                    </div>
+                    <video
+                      ref={videoRef}
+                      src={videoUrl}
+                      controls
+                      onTimeUpdate={handleTimeUpdate}
+                      style={{
+                        width: '100%',
+                        borderRadius: '12px',
+                        background: '#000',
+                        maxHeight: '340px',
+                        objectFit: 'contain',
+                      }}
+                    />
+                    <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.35)', margin: '10px 0 0', lineHeight: 1.5 }}>
+                      Recording is stored locally in your browser. Click a transcript entry to jump to that moment.
+                    </p>
+                  </div>
+                )}
+
+                {/* Full Transcript */}
+                {hasTranscript && (
+                  <div className="glass-panel-dark" style={{ padding: '16px', display: 'flex', flexDirection: 'column', maxHeight: '500px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px', flexShrink: 0 }}>
+                      <span style={{ fontSize: '20px' }}>📝</span>
+                      <h3 style={{ margin: 0, fontSize: '15px', color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 800 }}>Full Transcript</h3>
+                      <span style={{ marginLeft: 'auto', fontSize: '9px', color: 'rgba(255,255,255,0.4)', fontWeight: 500 }}>
+                        {finalTranscript.length} entries
+                      </span>
+                    </div>
+                    <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      {finalTranscript.map((entry, i) => (
+                        <TranscriptEntry
+                          key={i}
+                          entry={entry}
+                          startTime={sessionData?.sessionStartTime}
+                          isHighlighted={hasReplay && i === activeTranscriptIdx}
+                          onClick={hasReplay ? () => seekToEntry(entry) : undefined}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
