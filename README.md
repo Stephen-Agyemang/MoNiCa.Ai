@@ -66,3 +66,4 @@ SUPABASE_URL=postgresql://...
 # Cache (optional — defaults to redis://redis:6379 inside Docker Compose)
 # REDIS_URL=redis://localhost:6379
 ```
+MIT License
