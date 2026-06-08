@@ -3,6 +3,7 @@ import { useUser, UserButton } from '@clerk/clerk-react';
 import { LiveKitRoom, RoomAudioRenderer } from '@livekit/components-react';
 import { LandingFooter } from '../components/layout/LandingFooter';
 import { MonicaPresenceCard } from '../components/ui/MonicaPresenceCard';
+import { ThemeToggle } from '../components/ui/ThemeToggle';
 import MainStage from '../features/interview/MainStage';
 import { apiUrl } from '../lib/api';
 
@@ -163,7 +164,10 @@ export function InterviewPage({ guestMode = false, onOpenLegal }) {
               SESSION ACTIVE
             </span>
           </div>
-          <button onClick={logout} className="session-end-btn">End Session</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <ThemeToggle />
+            <button onClick={logout} className="session-end-btn">End Session</button>
+          </div>
         </header>
 
         <LiveKitRoom
@@ -207,11 +211,10 @@ export function InterviewPage({ guestMode = false, onOpenLegal }) {
       <div className="mesh-glow-sphere sphere-2" />
 
       {/* Top-right user control — sign out for authenticated users */}
-      {!guestMode && (
-        <div className="page-header">
-          <UserButton signOutFallbackRedirectUrl="/" />
-        </div>
-      )}
+      <div className="page-header" style={{ gap: '10px' }}>
+        <ThemeToggle />
+        {!guestMode && <UserButton signOutFallbackRedirectUrl="/" />}
+      </div>
 
       <div style={{ width: '100%', flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '20px 24px', position: 'relative', zIndex: 10 }}>
         <div style={{ width: '100%', maxWidth: '540px', margin: '0 auto' }}>

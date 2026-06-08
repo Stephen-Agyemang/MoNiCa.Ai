@@ -12,7 +12,7 @@ const ReportView     = lazy(() => import('./pages/ReportPage').then(m => ({ defa
 
 function PageLoader() {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#05070a' }}>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'var(--bg-primary)' }}>
       <div style={{ width: '40px', height: '40px', borderRadius: '50%', border: '2px solid rgba(130,179,66,0.2)', borderTopColor: '#82b342', animation: 'spin 0.8s linear infinite' }} />
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>

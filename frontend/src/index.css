@@ -31,6 +31,358 @@
   --glass-border-bright: rgba(255, 255, 255, 0.15);
 }
 
+/* ─────────────────────────────────────────── */
+/* Light Mode Tokens & Overrides               */
+/* ─────────────────────────────────────────── */
+
+[data-theme="light"] {
+  --bg-primary: #edf0f5;
+  --bg-card: rgba(255, 255, 255, 0.8);
+  --bg-dark-section: #e4e8ee;
+  --accent: #6a9a28;
+  --accent-hover: #7aad2e;
+  --accent-subtle: rgba(106, 154, 40, 0.12);
+  --text-heading: #0d1117;
+  --text-body: rgba(13, 17, 23, 0.82);
+  --text-muted: rgba(13, 17, 23, 0.48);
+  --border-light: rgba(0, 0, 0, 0.07);
+  --border-medium: rgba(0, 0, 0, 0.12);
+  --glass-bg: rgba(255, 255, 255, 0.68);
+  --glass-bg-hover: rgba(255, 255, 255, 0.88);
+  --glass-border: rgba(0, 0, 0, 0.07);
+  --glass-border-bright: rgba(0, 0, 0, 0.13);
+}
+
+[data-theme="light"] body {
+  background-color: var(--bg-primary);
+  background-image:
+    radial-gradient(circle at 15% 50%, rgba(106, 154, 40, 0.06), transparent 25%),
+    radial-gradient(circle at 85% 30%, rgba(106, 154, 40, 0.04), transparent 25%);
+  color: var(--text-body);
+}
+
+[data-theme="light"] ::placeholder {
+  color: rgba(13, 17, 23, 0.3) !important;
+}
+
+[data-theme="light"] ::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.12);
+  border-color: transparent;
+}
+
+[data-theme="light"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.22);
+}
+
+/* Brand heading */
+[data-theme="light"] .brand-text-gradient {
+  background: linear-gradient(160deg, #0d1117 0%, #2d3748 55%, #4a5e40 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: none;
+}
+
+/* Glass cards */
+[data-theme="light"] .glass-card {
+  background: rgba(255, 255, 255, 0.65);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.07);
+}
+
+[data-theme="light"] .glass-panel-dark {
+  background: rgba(255, 255, 255, 0.78) !important;
+  border: 1px solid rgba(0, 0, 0, 0.07) !important;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.07) !important;
+}
+
+/* Settings / info cards */
+[data-theme="light"] .settings-card {
+  background: rgba(255, 255, 255, 0.82) !important;
+  border: 1px solid rgba(0, 0, 0, 0.06) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.06) !important;
+  color: var(--text-body);
+}
+
+/* Legal sheet */
+[data-theme="light"] .legal-sheet-content {
+  background: rgba(255, 255, 255, 0.97);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 40px 80px rgba(0, 0, 0, 0.12);
+}
+
+[data-theme="light"] .legal-sheet-close {
+  background: rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  color: var(--text-heading);
+}
+
+[data-theme="light"] .legal-sheet-close:hover {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .legal-text p {
+  color: rgba(13, 17, 23, 0.7);
+}
+
+[data-theme="light"] .legal-text strong {
+  color: var(--text-heading);
+}
+
+/* Form elements */
+[data-theme="light"] .form-label {
+  color: rgba(13, 17, 23, 0.9);
+}
+
+[data-theme="light"] .form-label-optional {
+  color: rgba(13, 17, 23, 0.45);
+}
+
+[data-theme="light"] .form-input {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: var(--border-medium);
+  color: var(--text-heading);
+}
+
+[data-theme="light"] .form-input:focus {
+  background: #ffffff;
+  border-color: var(--accent);
+}
+
+[data-theme="light"] .mode-btn {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: var(--border-medium);
+  color: rgba(13, 17, 23, 0.85);
+}
+
+[data-theme="light"] .strictness-side-label {
+  color: rgba(13, 17, 23, 0.7);
+}
+
+[data-theme="light"] .resume-drop-zone {
+  background: rgba(0, 0, 0, 0.02);
+  border-color: rgba(0, 0, 0, 0.18);
+}
+
+[data-theme="light"] .resume-drop-zone:hover,
+[data-theme="light"] .resume-drop-zone.drag-over {
+  background: rgba(106, 154, 40, 0.05);
+  border-color: var(--accent);
+}
+
+/* Support form */
+[data-theme="light"] .support-input {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(0, 0, 0, 0.1);
+  color: var(--text-heading);
+}
+
+[data-theme="light"] .support-input::placeholder {
+  color: rgba(13, 17, 23, 0.35);
+}
+
+[data-theme="light"] .support-input:focus {
+  border-color: var(--accent);
+  background: #ffffff;
+}
+
+/* Session header (active interview) */
+[data-theme="light"] .session-header {
+  background: rgba(237, 240, 245, 0.88);
+  border-bottom: 1px solid var(--border-light);
+}
+
+/* Auth / page footer */
+[data-theme="light"] .auth-footer {
+  color: rgba(13, 17, 23, 0.45);
+  text-shadow: none;
+}
+
+[data-theme="light"] .auth-footer-link {
+  color: rgba(13, 17, 23, 0.4);
+}
+
+/* Data footer */
+[data-theme="light"] .data-footer {
+  background: rgba(237, 240, 245, 0.97);
+}
+
+[data-theme="light"] .footer-brand p {
+  color: rgba(13, 17, 23, 0.4);
+}
+
+[data-theme="light"] .footer-links a {
+  color: rgba(13, 17, 23, 0.5);
+}
+
+[data-theme="light"] .footer-links a:hover {
+  color: var(--text-heading);
+}
+
+[data-theme="light"] .footer-bottom {
+  color: rgba(13, 17, 23, 0.3);
+  border-top-color: var(--border-light);
+}
+
+/* Grounding / marketing section */
+[data-theme="light"] .grounding-section {
+  background: rgba(237, 240, 245, 0.6);
+  border-top: 1px solid var(--border-light);
+}
+
+/* Metric cards */
+[data-theme="light"] .metric-value {
+  color: var(--text-heading);
+}
+
+[data-theme="light"] .metric-label {
+  color: var(--text-muted);
+}
+
+/* Feature items */
+[data-theme="light"] .item-content h4 {
+  color: var(--text-heading);
+}
+
+[data-theme="light"] .item-content p {
+  color: rgba(13, 17, 23, 0.6);
+}
+
+/* Success / support states */
+[data-theme="light"] .success-title {
+  color: var(--text-heading);
+}
+
+[data-theme="light"] .success-body {
+  color: rgba(13, 17, 23, 0.6);
+}
+
+/* User profile pill */
+[data-theme="light"] .user-profile-prompter {
+  background: rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .user-profile-prompter:hover {
+  background: rgba(0, 0, 0, 0.08);
+  border-color: rgba(0, 0, 0, 0.18);
+}
+
+[data-theme="light"] .profile-details-helper {
+  color: rgba(13, 17, 23, 0.4);
+}
+
+/* Monica presence card */
+[data-theme="light"] .monica-presence-card {
+  background: rgba(255, 255, 255, 0.88) !important;
+  border: 1px solid rgba(0, 0, 0, 0.07) !important;
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.1);
+}
+
+/* Recruiter table row hover */
+[data-theme="light"] .dashboard-row-hover:hover {
+  background: rgba(0, 0, 0, 0.025) !important;
+}
+
+/* Report calibration card */
+[data-theme="light"] .report-calibration-card {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.72) 0%, rgba(106, 154, 40, 0.04) 100%) !important;
+}
+
+/* Background orbs — toned down on light */
+[data-theme="light"] .auth-mesh-overlay {
+  background:
+    radial-gradient(ellipse at 20% 0%, rgba(106, 154, 40, 0.08) 0%, transparent 55%),
+    radial-gradient(ellipse at 80% 100%, rgba(74, 124, 31, 0.05) 0%, transparent 50%);
+}
+
+[data-theme="light"] .sphere-1 {
+  background: #a8cf72;
+  opacity: 0.12;
+}
+
+[data-theme="light"] .sphere-2 {
+  background: #4a7a22;
+  opacity: 0.15;
+}
+
+[data-theme="light"] .sphere-3 {
+  opacity: 0.08;
+}
+
+/* ─── Clerk Light Mode ─── */
+[data-theme="light"] .cl-cardBox {
+  background: rgba(255, 255, 255, 0.88) !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 24px 60px -20px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255,255,255,0.9) !important;
+}
+
+[data-theme="light"] .cl-formFieldLabel {
+  color: rgba(13, 17, 23, 0.8) !important;
+}
+
+[data-theme="light"] .cl-headerSubtitle {
+  color: rgba(13, 17, 23, 0.6) !important;
+}
+
+[data-theme="light"] .cl-headerTitle {
+  color: var(--text-heading) !important;
+}
+
+[data-theme="light"] .cl-footerActionText,
+[data-theme="light"] .cl-footer * {
+  color: rgba(13, 17, 23, 0.65) !important;
+}
+
+[data-theme="light"] .cl-footerActionLink {
+  color: #5a8520 !important;
+}
+
+[data-theme="light"] .cl-dividerText {
+  color: rgba(13, 17, 23, 0.5) !important;
+}
+
+[data-theme="light"] .cl-dividerLine {
+  background: rgba(0, 0, 0, 0.1) !important;
+}
+
+[data-theme="light"] .cl-internal-phgxa2,
+[data-theme="light"] .cl-internal-1x6k721 {
+  color: rgba(13, 17, 23, 0.9) !important;
+}
+
+[data-theme="light"] .cl-formFieldInput {
+  color: #0d1117 !important;
+  background: rgba(255, 255, 255, 0.9) !important;
+  border-color: rgba(0, 0, 0, 0.12) !important;
+}
+
+[data-theme="light"] .cl-formFieldInput:focus {
+  border-color: rgba(106, 154, 40, 0.6) !important;
+  box-shadow: 0 0 0 3px rgba(106, 154, 40, 0.1) !important;
+  background: #ffffff !important;
+}
+
+[data-theme="light"] .cl-otpCodeFieldInput {
+  color: #0d1117 !important;
+  background: rgba(255, 255, 255, 0.9) !important;
+  border-color: rgba(0, 0, 0, 0.15) !important;
+}
+
+[data-theme="light"] .cl-socialButtonsBlockButton {
+  background: rgba(0, 0, 0, 0.04) !important;
+  border-color: rgba(0, 0, 0, 0.15) !important;
+}
+
+[data-theme="light"] .cl-socialButtonsBlockButton:hover {
+  background: rgba(0, 0, 0, 0.08) !important;
+  border-color: rgba(0, 0, 0, 0.22) !important;
+}
+
+[data-theme="light"] .cl-socialButtonsBlockButtonText {
+  color: #0d1117 !important;
+}
+
 /* Global Placeholder Styling */
 ::placeholder {
   color: rgba(255, 255, 255, 0.3) !important;

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { UserButton, useAuth } from '@clerk/clerk-react';
 import { LandingFooter } from '../components/layout/LandingFooter';
 import { MonicaPresenceCard } from '../components/ui/MonicaPresenceCard';
+import { ThemeToggle } from '../components/ui/ThemeToggle';
 import { apiUrl, authedFetch } from '../lib/api';
 
 export function RecruiterPortal({ onOpenLegal }) {
@@ -46,6 +47,7 @@ export function RecruiterPortal({ onOpenLegal }) {
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <a href="/" className="report-back-btn">← Back to Interview</a>
+              <ThemeToggle />
               <UserButton signOutFallbackRedirectUrl="/" />
             </div>
           </div>

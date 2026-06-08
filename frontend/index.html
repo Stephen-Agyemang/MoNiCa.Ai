@@ -7,7 +7,14 @@
   <meta name="description"
     content="Monica — Your personal professional interview coach. Practice high-stakes interviews with real-time voice AI for any role or industry." />
   <meta name="theme-color" content="#05070a" />
-  <meta name="color-scheme" content="dark" />
+  <meta name="color-scheme" content="dark light" />
+  <script>
+    (function () {
+      var saved = localStorage.getItem('monica-theme');
+      var theme = saved || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      document.documentElement.setAttribute('data-theme', theme);
+    })();
+  </script>
 
   <title>Monica | AI Interview Coach</title>
 
